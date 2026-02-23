@@ -109,6 +109,18 @@ export default function VehicleDetailPage() {
                 }
             }
             try {
+                if (val < vehicle.currentOdo && mainOdoDecreaseReason.trim()) {
+                    // Create a dummy record to document why the odometer was reduced
+                    await addManualRecord({
+                        vehicleId: vehicle.id,
+                        plate: vehicle.plate,
+                        amount: 0,
+                        odometer: val,
+                        items: [],
+                        notes: `Odometer Adjustment Reason: ${mainOdoDecreaseReason.trim()}`
+                    });
+                }
+
                 await updateOdometer(vehicle.id, val);
                 setUpdatingOdo(false);
                 setNewOdoValue("");
@@ -214,6 +226,7 @@ export default function VehicleDetailPage() {
                 amount: validItems.reduce((acc, item) => acc + (item.price || 0), 0),
                 odometer: parsedOdo,
                 items: validItems,
+                notes: odoDecreaseReason.trim() ? `Odometer Adjustment Reason: ${odoDecreaseReason.trim()}${logNotes ? ' | ' + logNotes : ''}` : logNotes,
                 photos: logPhotos.length > 0 ? logPhotos : undefined
             });
 
@@ -400,41 +413,51 @@ export default function VehicleDetailPage() {
                                 <label className="block text-sm font-medium mb-2">Items Performed</label>
                                 <div className="space-y-3">
                                     {logItems.map((item, i) => (
-                                        <div key={i} className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_auto] gap-3 items-start sm:items-center bg-background p-3 rounded-lg border border-panel-border">
-                                            <Input
-                                                required
-                                                list="common-parts"
-                                                placeholder="Part/Service (Ex: Replaced Tires)"
-                                                value={item.name}
-                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateLogItem(i, 'name', e.target.value)}
-                                            />
-                                            <div className="flex gap-2">
+                                        <div key={i} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-background p-4 rounded-lg border border-panel-border">
+                                            <div className="w-full sm:flex-1">
+                                                <label className="block sm:hidden text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-1">Item Name</label>
                                                 <Input
-                                                    type="number"
-                                                    placeholder="Life(km)"
-                                                    value={item.lifespanOdo || ""}
-                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateLogItem(i, 'lifespanOdo', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                                                    className="font-mono w-24"
-                                                />
-                                                <Input
-                                                    type="number"
-                                                    placeholder="Life(mo)"
-                                                    value={item.lifespanMonths || ""}
-                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateLogItem(i, 'lifespanMonths', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                                                    className="font-mono w-24"
+                                                    required
+                                                    list="common-parts"
+                                                    placeholder="Part/Service (Ex: Replaced Tires)"
+                                                    value={item.name}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateLogItem(i, 'name', e.target.value)}
+                                                    className="w-full"
                                                 />
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-foreground/50 text-sm">Rs</span>
+                                            <div className="flex w-full sm:w-auto gap-2">
+                                                <div className="flex-1 sm:flex-none">
+                                                    <label className="block sm:hidden text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-1">Lifespan (km)</label>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="Life(km)"
+                                                        value={item.lifespanOdo || ""}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateLogItem(i, 'lifespanOdo', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                                                        className="w-full sm:w-28 font-mono text-sm"
+                                                    />
+                                                </div>
+                                                <div className="flex-1 sm:flex-none">
+                                                    <label className="block sm:hidden text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-1">Lifespan (mos)</label>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="Life(mo)"
+                                                        value={item.lifespanMonths || ""}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateLogItem(i, 'lifespanMonths', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                                                        className="w-full sm:w-28 font-mono text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-panel-border sm:border-t-0">
+                                                <span className="text-foreground/50 text-sm font-bold">Rs</span>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
                                                     placeholder="0.00"
                                                     value={item.price || ""}
                                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateLogItem(i, 'price', e.target.value ? parseFloat(e.target.value) : 0)}
-                                                    className="w-full sm:w-40 font-mono"
+                                                    className="flex-1 sm:w-28 font-mono"
                                                 />
-                                                <Button type="button" variant="ghost" className="text-alert px-2" onClick={() => removeLogItem(i)}>
+                                                <Button type="button" variant="ghost" className="text-alert px-2 ml-1" onClick={() => removeLogItem(i)}>
                                                     <Trash2 size={16} />
                                                 </Button>
                                             </div>

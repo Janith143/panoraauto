@@ -85,7 +85,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
         try {
-            await supabase.auth.signOut();
+            // Forcefully clear auth tokens from local storage to prevent getting stuck
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key?.startsWith('sb-') && key?.endsWith('-auth-token')) {
+                    localStorage.removeItem(key);
+                }
+            }
+            // Fire signout asynchronously but don't wait for it to succeed if the network/token is bad
+            supabase.auth.signOut().catch(console.error);
         } catch (error) {
             console.error("Error signing out:", error);
         } finally {

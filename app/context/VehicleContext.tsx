@@ -43,6 +43,7 @@ export interface GarageCustomer {
 export interface ServiceItem {
     name: string;
     price: number;
+    qty?: number;
     lifespanOdo?: number;
     lifespanMonths?: number;
 }
@@ -495,21 +496,38 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
         let vehicleId = null;
         let status = "approved";
 
-        // Query the database directly to find if the vehicle belongs to an Owner
+        // Try to look up vehicle owner — but don't block bill creation if this fails
         if (billData.plate) {
-            const { data: matchingVehicle } = await supabase
-                .from('vehicles')
-                .select('id')
-                .eq('plate', billData.plate.toUpperCase())
-                .maybeSingle();
+            try {
+                const normalizedPlate = billData.plate.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                console.log("[sendBill] Step 1: Looking up vehicle plate:", normalizedPlate);
 
-            if (matchingVehicle && matchingVehicle.id) {
-                vehicleId = matchingVehicle.id;
-                status = "pending";
+                // Race the query against a 5-second timeout
+                const lookupPromise = supabase
+                    .from('vehicles')
+                    .select('id')
+                    .eq('plate', normalizedPlate)
+                    .maybeSingle();
+
+                const timeoutPromise = new Promise<{ data: null; error: null }>((resolve) =>
+                    setTimeout(() => { console.warn("[sendBill] Vehicle lookup timed out after 5s"); resolve({ data: null, error: null }); }, 5000)
+                );
+
+                const { data: matchingVehicle } = await Promise.race([lookupPromise, timeoutPromise]);
+                console.log("[sendBill] Step 1 done. match:", matchingVehicle);
+
+                if (matchingVehicle && matchingVehicle.id) {
+                    vehicleId = matchingVehicle.id;
+                    status = "pending";
+                }
+            } catch (lookupErr) {
+                console.warn("[sendBill] Vehicle lookup failed, proceeding with approved status:", lookupErr);
             }
         }
 
-        const { data: billRes, error: billErr } = await supabase
+        console.log("[sendBill] Step 2: Inserting bill. status:", status, "vehicleId:", vehicleId);
+
+        const insertPromise = supabase
             .from('bills')
             .insert([{
                 garage_id: billData.garageId,
@@ -526,13 +544,26 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
             }])
             .select();
 
+        const insertTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Database connection timed out (10s). Your Supabase project may be paused — please check supabase.com/dashboard and restore it.")), 10000)
+        );
+
+        const { data: billRes, error: billErr } = await Promise.race([insertPromise, insertTimeout]);
+
+        console.log("[sendBill] Step 2 done. billRes:", billRes, "billErr:", billErr);
+
         if (billErr) {
             console.error("Bill Insert Error:", billErr);
             throw new Error(`Supabase Error: ${billErr.message} | Details: ${billErr.details || 'None'} | Hint: ${billErr.hint || 'None'}`);
         }
+        if (!billRes || billRes.length === 0) {
+            console.error("Bill Insert returned no data. billRes:", billRes);
+            throw new Error("Invoice was not created — no data returned from database. Check RLS policies or table permissions.");
+        }
         const insertedBill = billRes[0];
 
         if (billData.items && billData.items.length > 0) {
+            console.log("[sendBill] Step 3: Inserting", billData.items.length, "service items for bill:", insertedBill.id);
             const itemsToInsert = billData.items.map(item => ({
                 bill_id: insertedBill.id,
                 name: item.name,
@@ -540,13 +571,21 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
                 lifespan_odo: item.lifespanOdo,
                 lifespan_months: item.lifespanMonths
             }));
-            const { error: itemsErr } = await supabase.from('service_items').insert(itemsToInsert);
+
+            const itemsInsertPromise = supabase.from('service_items').insert(itemsToInsert);
+            const itemsTimeout = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("Service items insert timed out (10s). Database may be paused.")), 10000)
+            );
+
+            const { error: itemsErr } = await Promise.race([itemsInsertPromise, itemsTimeout]);
+            console.log("[sendBill] Step 3 done. itemsErr:", itemsErr);
             if (itemsErr) {
                 console.error("Service Items Insert Error:", itemsErr);
                 throw new Error(`Supabase Items Error: ${itemsErr.message} | Details: ${itemsErr.details || 'None'}`);
             }
         }
 
+        console.log("[sendBill] Step 4: Updating local state");
         const newBill: Bill = {
             ...billData,
             id: insertedBill.id,
@@ -557,6 +596,7 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
         };
 
         setBills(prev => [newBill, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        console.log("[sendBill] COMPLETE");
     };
 
     const processRecordItems = async (vehicleId: string | undefined, items: ServiceItem[], billOdo?: number) => {
@@ -660,8 +700,12 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
 
         if (bill.vehicleId && finalOdometer) {
             const vehicleIndex = currentVehicles.findIndex(v => v.id === bill.vehicleId);
-            if (vehicleIndex >= 0 && finalOdometer > currentVehicles[vehicleIndex].currentOdo) {
-                await updateOdometer(bill.vehicleId, finalOdometer);
+            if (vehicleIndex >= 0) {
+                // Feature constraint: Ensure master odometer only goes forward on garage bill approval
+                const nextOdo = Math.max(currentVehicles[vehicleIndex].currentOdo || 0, finalOdometer);
+                if (nextOdo > currentVehicles[vehicleIndex].currentOdo) {
+                    await updateOdometer(bill.vehicleId, nextOdo);
+                }
             }
         }
 
@@ -721,6 +765,22 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
         if (Object.keys(dbUpdates).length > 0) {
             const { error } = await supabase.from('bills').update(dbUpdates).eq('id', billId);
             if (error) throw error;
+        }
+
+        // If items were updated, replace them in service_items table
+        if (updatedData.items) {
+            await supabase.from('service_items').delete().eq('bill_id', billId);
+            if (updatedData.items.length > 0) {
+                const itemsToInsert = updatedData.items.map(item => ({
+                    bill_id: billId,
+                    name: item.name,
+                    price: item.price,
+                    lifespan_odo: item.lifespanOdo,
+                    lifespan_months: item.lifespanMonths
+                }));
+                const { error: itemsErr } = await supabase.from('service_items').insert(itemsToInsert);
+                if (itemsErr) throw itemsErr;
+            }
         }
 
         const updatedBills = bills.map(b => b.id === billId ? { ...b, ...updatedData } : b);
