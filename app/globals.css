@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --color-background: #F4F4F5;
+  --color-foreground: #18181B;
+
+  --color-primary: #0284C7;
+  --color-primary-hover: #0369A1;
+
+  --color-alert: #EF4444;
+  --color-alert-hover: #DC2626;
+
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+
+  --color-panel: #FFFFFF;
+  --color-panel-border: #E4E4E7;
+}
+
+:root {
+  --background: #F4F4F5;
+  --foreground: #18181B;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* Base custom interactive styles */
+@layer utilities {
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-colors;
+  }
+
+  .btn-alert {
+    @apply bg-alert hover:bg-alert-hover text-white font-semibold rounded-xl transition-colors;
+  }
+
+  .panel {
+    @apply bg-panel border border-panel-border rounded-xl p-4 sm:p-6;
+  }
+}
