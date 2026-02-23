@@ -545,7 +545,7 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
             .select();
 
         const insertTimeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Database connection timed out (10s). Your Supabase project may be paused — please check supabase.com/dashboard and restore it.")), 10000)
+            setTimeout(() => reject(new Error("Database connection timed out (10s). If this is on a VPS, ensure you have a .env file and have REBUILT the app using 'npm run build'. Your Supabase project might also be paused.")), 10000)
         );
 
         const { data: billRes, error: billErr } = await Promise.race([insertPromise, insertTimeout]);
@@ -574,7 +574,7 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
 
             const itemsInsertPromise = supabase.from('service_items').insert(itemsToInsert);
             const itemsTimeout = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error("Service items insert timed out (10s). Database may be paused.")), 10000)
+                setTimeout(() => reject(new Error("Service items insert timed out (10s). If this is on a VPS, ensure you have a proper .env file and have REBUILT the app.")), 10000)
             );
 
             const { error: itemsErr } = await Promise.race([itemsInsertPromise, itemsTimeout]);
