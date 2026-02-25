@@ -36,7 +36,7 @@ model Vehicle {
   revenueLicenseDate DateTime? @db.Date @map("revenue_license_date")
   insuranceDate      DateTime? @db.Date @map("insurance_date")
   emissionReportDate DateTime? @db.Date @map("emission_report_date")
-  photo              String?
+  photo              String?   @db.LongText
   createdAt          DateTime  @default(now()) @map("created_at")
 
   owner              Owner         @relation(fields: [ownerId], references: [id], onDelete: Cascade)

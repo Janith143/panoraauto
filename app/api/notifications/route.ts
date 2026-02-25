@@ -14,7 +14,7 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_for_local_dev_123') as any;
 
         if (decoded.role !== 'owner') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
