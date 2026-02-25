@@ -71,6 +71,44 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             }
         }
 
+        // If items contain lifespan properties and vehicle is linked, we should upsert vehicle_parts
+        // Emulating processRecordItems here locally for data integrity via Prisma
+        if (currentBill?.vehicleId && updatedBill.items && updatedBill.items.length > 0) {
+            const vehicle = await prisma.vehicle.findUnique({ where: { id: currentBill.vehicleId } });
+            const baseOdo = body.odometer !== undefined ? body.odometer : (currentBill.odometer ?? vehicle?.currentOdo ?? 0);
+
+            for (const item of updatedBill.items) {
+                if (item.lifespanOdo || item.lifespanMonths) {
+                    const existingPart = await prisma.vehiclePart.findFirst({
+                        where: { vehicleId: currentBill.vehicleId, name: item.name }
+                    });
+
+                    if (existingPart) {
+                        await prisma.vehiclePart.update({
+                            where: { id: existingPart.id },
+                            data: {
+                                lastServiceOdo: item.lifespanOdo ? baseOdo : undefined,
+                                lifespanOdo: item.lifespanOdo || undefined,
+                                lastServiceDate: item.lifespanMonths ? new Date() : undefined,
+                                lifespanMonths: item.lifespanMonths || undefined
+                            }
+                        });
+                    } else {
+                        await prisma.vehiclePart.create({
+                            data: {
+                                vehicleId: currentBill.vehicleId,
+                                name: item.name,
+                                lastServiceOdo: item.lifespanOdo ? baseOdo : 0,
+                                lifespanOdo: item.lifespanOdo || 0,
+                                lastServiceDate: item.lifespanMonths ? new Date() : undefined,
+                                lifespanMonths: item.lifespanMonths || null
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
         return NextResponse.json(updatedBill);
     } catch (error: any) {
         console.error("Bill PATCH error:", error);

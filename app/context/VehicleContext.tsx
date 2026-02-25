@@ -315,8 +315,16 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
     };
 
     const processRecordItems = async (vehicleId: string | undefined, items: ServiceItem[], billOdo?: number) => {
-        // Obsolete function locally since /api/bills/route.ts POST/PATCH now handles this natively inside the transaction
-        // Kept empty to satisfy existing calls gracefully without breaking React compilation
+        if (!user?.id || user.role !== 'owner') return;
+        try {
+            const pRes = await fetch(`/api/parts?ownerId=${user.id}`);
+            if (pRes.ok) {
+                const dbParts = await pRes.json();
+                setParts(dbParts);
+            }
+        } catch (error) {
+            console.error("Failed to refresh parts:", error);
+        }
     };
 
     const addManualRecord = async (recordData: Omit<Bill, 'id' | 'status' | 'date' | 'source'>) => {

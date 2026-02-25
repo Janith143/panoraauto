@@ -5,11 +5,15 @@ import webpush from 'web-push';
 
 const prisma = new PrismaClient();
 
-webpush.setVapidDetails(
-    `mailto:${process.env.EMAIL_FROM || 'admin@example.com'}`,
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string,
-    process.env.VAPID_PRIVATE_KEY as string
-);
+if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        `mailto:${process.env.EMAIL_FROM || 'admin@example.com'}`,
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+    );
+} else {
+    console.warn('VAPID keys are not set. Web push notifications will not work.');
+}
 
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_SERVER_HOST,
