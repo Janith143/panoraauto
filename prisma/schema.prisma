@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Owner {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  notificationEmail String?  @map("notification_email")
+  fullName          String   @map("full_name")
+  password          String?  // Needed for custom Auth
+  role              String   @default("owner")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  vehicles      Vehicle[]
+  subscriptions WebPushSubscription[]
+  notifications Notification[]
+
+  @@map("owners")
+}
+
+model Vehicle {
+  id                 String    @id @default(uuid())
+  ownerId            String    @map("owner_id")
+  make               String
+  model              String
+  year               Int
+  plate              String    @unique
+  vin                String?
+  engineType         String?   @map("engine_type")
+  currentOdo         Int       @default(0) @map("current_odo")
+  revenueLicenseDate DateTime? @db.Date @map("revenue_license_date")
+  insuranceDate      DateTime? @db.Date @map("insurance_date")
+  emissionReportDate DateTime? @db.Date @map("emission_report_date")
+  photo              String?
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  owner              Owner         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bills              Bill[]
+  parts              VehiclePart[]
+
+  @@map("vehicles")
+}
+
+model Garage {
+  id         String   @id @default(uuid())
+  name       String
+  ownerEmail String   @unique @map("owner_email")
+  password   String?  // Needed for custom Auth
+  role       String   @default("garage")
+  address    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customers  GarageCustomer[]
+  bills      Bill[]
+
+  @@map("garages")
+}
+
+model GarageCustomer {
+  id         String   @id @default(uuid())
+  garageId   String   @map("garage_id")
+  plate      String
+  make       String
+  model      String
+  year       Int
+  phone      String?
+  ownerName  String?  @map("owner_name")
+  notes      String?  @db.Text
+  odometer   Int?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  garage     Garage   @relation(fields: [garageId], references: [id], onDelete: Cascade)
+  bills      Bill[]
+
+  @@unique([garageId, plate])
+  @@map("garage_customers")
+}
+
+model Bill {
+  id               String          @id @default(uuid())
+  garageId         String?         @map("garage_id")
+  garageCustomerId String?         @map("garage_customer_id")
+  vehicleId        String?         @map("vehicle_id")
+  plate            String
+  amount           Decimal
+  discount         Decimal         @default(0)
+  odometer         Int?
+  notes            String?         @db.Text
+  photos           Json?           // Stores array of photo URLs
+  status           String          // 'pending', 'approved', 'rejected'
+  source           String          // 'garage', 'owner'
+  date             DateTime        @default(now())
+
+  garage           Garage?         @relation(fields: [garageId], references: [id], onDelete: Cascade)
+  garageCustomer   GarageCustomer? @relation(fields: [garageCustomerId], references: [id], onDelete: SetNull)
+  vehicle          Vehicle?        @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  items            ServiceItem[]
+
+  @@map("bills")
+}
+
+model ServiceItem {
+  id             String  @id @default(uuid())
+  billId         String  @map("bill_id")
+  name           String
+  price          Decimal
+  lifespanOdo    Int?    @map("lifespan_odo")
+  lifespanMonths Int?    @map("lifespan_months")
+
+  bill           Bill    @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@map("service_items")
+}
+
+model VehiclePart {
+  id               String   @id @default(uuid())
+  vehicleId        String   @map("vehicle_id")
+  name             String
+  lastServiceOdo   Int      @default(0) @map("last_service_odo")
+  lifespanOdo      Int      @map("lifespan_odo")
+  lastServiceDate  DateTime @default(now()) @map("last_service_date")
+  lifespanMonths   Int?     @map("lifespan_months")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  vehicle          Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_parts")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      Owner    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model WebPushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String   @db.LongText
+  auth      String   @db.LongText
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      Owner    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("web_push_subscriptions")
+}

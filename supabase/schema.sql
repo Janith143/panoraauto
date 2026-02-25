@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
     current_odo INTEGER DEFAULT 0,
     revenue_license_date DATE,
     insurance_date DATE,
+    emission_report_date DATE,
     photo TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -107,3 +108,14 @@ ALTER TABLE garage_customers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE bills DISABLE ROW LEVEL SECURITY;
 ALTER TABLE service_items DISABLE ROW LEVEL SECURITY;
 ALTER TABLE vehicle_parts DISABLE ROW LEVEL SECURITY;
+
+-- 9. Web Push Subscriptions
+CREATE TABLE IF NOT EXISTS web_push_subscriptions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES owners(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE web_push_subscriptions DISABLE ROW LEVEL SECURITY;

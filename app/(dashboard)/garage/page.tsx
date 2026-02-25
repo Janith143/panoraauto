@@ -19,7 +19,7 @@ export default function GarageDashboard() {
     // Editing bill state
     const [editingBillId, setEditingBillId] = useState<string | null>(null);
     const [editItems, setEditItems] = useState<ServiceItem[]>([]);
-    const [editDiscount, setEditDiscount] = useState<number>(0);
+    const [editServiceCost, setEditServiceCost] = useState<number>(0);
     const [editOdo, setEditOdo] = useState<string>("");
     const [editNotes, setEditNotes] = useState<string>("");
     const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -36,7 +36,7 @@ export default function GarageDashboard() {
     const [items, setItems] = useState<ServiceItem[]>([
         { name: "", price: 0, qty: 1, lifespanOdo: undefined, lifespanMonths: undefined }
     ]);
-    const [discount, setDiscount] = useState<number>(0);
+    const [serviceCost, setServiceCost] = useState<number>(0);
     const [sent, setSent] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [serviceOdo, setServiceOdo] = useState<string>("");
@@ -126,20 +126,20 @@ export default function GarageDashboard() {
     };
 
     const totalItemsAmount = items.reduce((acc, item) => acc + ((item.price || 0) * (item.qty || 1)), 0);
-    const grandTotal = Math.max(0, totalItemsAmount - discount);
+    const grandTotal = Math.max(0, totalItemsAmount + serviceCost);
 
     // Editing helpers
     const startEditBill = (bill: Bill) => {
         setEditingBillId(bill.id);
         setEditItems(bill.items.map(i => ({ ...i })));
-        setEditDiscount(bill.discount || 0);
+        setEditServiceCost(bill.discount && bill.discount < 0 ? Math.abs(bill.discount) : 0);
         setEditOdo(bill.odometer ? bill.odometer.toString() : "");
         setEditNotes(bill.notes || "");
     };
     const cancelEditBill = () => {
         setEditingBillId(null);
         setEditItems([]);
-        setEditDiscount(0);
+        setEditServiceCost(0);
         setEditOdo("");
         setEditNotes("");
     };
@@ -149,7 +149,7 @@ export default function GarageDashboard() {
         setEditItems(ni);
     };
     const editItemsTotal = editItems.reduce((acc, item) => acc + ((item.price || 0) * (item.qty || 1)), 0);
-    const editGrandTotal = Math.max(0, editItemsTotal - editDiscount);
+    const editGrandTotal = Math.max(0, editItemsTotal + editServiceCost);
 
     const handleSaveEditBill = async (billId: string) => {
         if (isSavingEdit) return;
@@ -158,7 +158,7 @@ export default function GarageDashboard() {
             await updateBill(billId, {
                 items: editItems.filter(i => i.name.trim() !== ""),
                 amount: editGrandTotal,
-                discount: editDiscount > 0 ? editDiscount : undefined,
+                discount: editServiceCost > 0 ? -editServiceCost : undefined,
                 odometer: editOdo ? parseInt(editOdo, 10) : undefined,
                 notes: editNotes.trim() || undefined
             });
@@ -194,7 +194,10 @@ export default function GarageDashboard() {
             message += `\n   Rs ${lineTotal.toFixed(2)}\n`;
         });
         message += `────────────────────\n`;
-        if (discount > 0) {
+        if (discount < 0) {
+            message += `   Subtotal: Rs ${subtotal.toFixed(2)}\n`;
+            message += `   Service Cost: +Rs ${Math.abs(discount).toFixed(2)}\n`;
+        } else if (discount > 0) {
             message += `   Subtotal: Rs ${subtotal.toFixed(2)}\n`;
             message += `   Discount: -Rs ${discount.toFixed(2)}\n`;
         }
@@ -229,7 +232,7 @@ export default function GarageDashboard() {
                 garageId: foundCustomer.garageId,
                 garageCustomerId: foundCustomer.id,
                 amount: grandTotal,
-                discount: discount > 0 ? discount : undefined,
+                discount: serviceCost > 0 ? -serviceCost : undefined,
                 odometer: currentOdo,
                 notes: billNotes.trim() !== "" ? billNotes : undefined,
                 items: filteredItems,
@@ -253,7 +256,7 @@ export default function GarageDashboard() {
             setLastCompletedBill({ ...billToCreate, id: "recent", date: new Date().toISOString(), status: "pending", source: "garage" });
             setSent(true);
             setItems([{ name: "", price: 0, qty: 1, lifespanOdo: undefined, lifespanMonths: undefined }]);
-            setDiscount(0);
+            setServiceCost(0);
             setServiceOdo("");
             setBillNotes("");
             setBillPhotos([]);
@@ -424,7 +427,11 @@ export default function GarageDashboard() {
                                                             </div>
                                                         </div>
                                                         <div className="text-right shrink-0">
-                                                            {bill.discount && <div className="text-xs text-success mb-1">Discount: -Rs {bill.discount.toFixed(2)}</div>}
+                                                            {bill.discount && bill.discount < 0 ? (
+                                                                <div className="text-xs text-primary mb-1">Cost: +Rs {Math.abs(bill.discount).toFixed(2)}</div>
+                                                            ) : bill.discount && bill.discount > 0 ? (
+                                                                <div className="text-xs text-success mb-1">Discount: -Rs {bill.discount.toFixed(2)}</div>
+                                                            ) : null}
                                                             <div className="font-mono font-bold text-xl text-primary">Rs {bill.amount.toFixed(2)}</div>
                                                         </div>
                                                     </div>
@@ -600,23 +607,34 @@ export default function GarageDashboard() {
                                                                     />
                                                                 </div>
                                                             </div>
-                                                            {/* Row 3: Unit Price + Delete */}
+                                                            {/* Row 3: Unit Price + Line Total + Delete */}
                                                             <div className="flex items-end gap-2 pt-2 border-t border-panel-border">
                                                                 <div className="flex-1">
                                                                     <label className="block text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-1">Unit Price (Rs)</label>
                                                                     <Input
-                                                                        required
                                                                         type="number"
                                                                         step="0.01"
                                                                         placeholder="0.00"
                                                                         value={item.price || ""}
-                                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateItem(i, 'price', e.target.value ? parseFloat(e.target.value) : 0)}
+                                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateItem(i, 'price', e.target.value === "" ? 0 : parseFloat(e.target.value))}
                                                                         className="w-full font-mono"
                                                                     />
                                                                 </div>
-                                                                {(item.qty || 1) > 1 && (
-                                                                    <span className="text-xs text-foreground/50 font-mono pb-2">= Rs {((item.price || 0) * (item.qty || 1)).toFixed(2)}</span>
-                                                                )}
+                                                                <div className="flex-1 max-w-[120px]">
+                                                                    <label className="block text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-1">Total (Rs)</label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        placeholder="0.00"
+                                                                        value={item.price !== undefined ? Number(((item.price || 0) * (item.qty || 1)).toFixed(2)) || "" : ""}
+                                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                                            const val = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                                                                            const qty = item.qty || 1;
+                                                                            updateItem(i, 'price', val / qty);
+                                                                        }}
+                                                                        className="w-full font-mono bg-primary/5 border-primary/20"
+                                                                    />
+                                                                </div>
                                                                 <Button type="button" variant="ghost" className="text-alert px-2 mb-0.5" onClick={() => removeItem(i)}>
                                                                     <Trash2 size={16} />
                                                                 </Button>
@@ -651,14 +669,14 @@ export default function GarageDashboard() {
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-medium mb-2 text-success">Discount (Rs)</label>
+                                                        <label className="block text-sm font-medium mb-2 text-primary">Service Cost (Rs)</label>
                                                         <Input
                                                             type="number"
                                                             step="0.01"
                                                             placeholder="0.00"
-                                                            value={discount || ""}
-                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDiscount(e.target.value ? parseFloat(e.target.value) : 0)}
-                                                            className="font-mono bg-success/10 border-success/30 w-full text-success"
+                                                            value={serviceCost || ""}
+                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setServiceCost(e.target.value ? parseFloat(e.target.value) : 0)}
+                                                            className="font-mono bg-primary/10 border-primary/30 w-full text-primary"
                                                         />
                                                     </div>
                                                 </div>
@@ -667,9 +685,22 @@ export default function GarageDashboard() {
                                             <div className="flex justify-between items-center pt-4 border-t border-panel-border">
                                                 <span className="text-lg font-bold">Total Amount</span>
                                                 <div className="text-right">
-                                                    {discount > 0 && <div className="text-sm font-mono text-foreground/50 line-through">Rs {totalItemsAmount.toFixed(2)}</div>}
+                                                    {serviceCost > 0 && <div className="text-sm font-mono text-primary mb-1 pl-2">Service Cost: +Rs {serviceCost.toFixed(2)}</div>}
                                                     <span className="text-2xl font-mono text-primary font-bold">Rs {grandTotal.toFixed(2)}</span>
                                                 </div>
+                                            </div>
+
+                                            <div className="flex justify-end pt-1">
+                                                <Button type="button" variant="ghost" size="sm" className="text-xs text-foreground/50 hover:bg-panel-border/30 h-8" onClick={() => {
+                                                    const currentTotal = totalItemsAmount + serviceCost;
+                                                    const remainder = currentTotal % 500;
+                                                    if (remainder > 0 && currentTotal > 0) {
+                                                        const roundAmount = 500 - remainder;
+                                                        setItems([...items, { name: "Miscellaneous Items/Cost", price: roundAmount, qty: 1 }]);
+                                                    }
+                                                }}>
+                                                    Round off to nearest 500/-
+                                                </Button>
                                             </div>
 
                                             <div>
@@ -862,7 +893,11 @@ export default function GarageDashboard() {
                                                                 {bill.odometer && <span className="block text-xs text-foreground/50">Odo: {bill.odometer} km</span>}
                                                             </div>
                                                             <div className="text-right">
-                                                                {bill.discount && <div className="text-xs text-success mb-1">Discount: -Rs {bill.discount.toFixed(2)}</div>}
+                                                                {bill.discount && bill.discount < 0 ? (
+                                                                    <div className="text-xs text-primary mb-1">Cost: +Rs {Math.abs(bill.discount).toFixed(2)}</div>
+                                                                ) : bill.discount && bill.discount > 0 ? (
+                                                                    <div className="text-xs text-success mb-1">Discount: -Rs {bill.discount.toFixed(2)}</div>
+                                                                ) : null}
                                                                 <span className="font-mono font-bold text-primary">Rs {bill.amount.toFixed(2)}</span>
                                                             </div>
                                                         </div>
@@ -891,10 +926,20 @@ export default function GarageDashboard() {
                                                                         <Input type="number" placeholder="Life(km)" value={item.lifespanOdo || ""} onChange={(e: any) => updateEditItem(i, 'lifespanOdo', e.target.value ? parseInt(e.target.value, 10) : undefined)} className="w-full sm:w-24 font-mono text-sm" />
                                                                         <Input type="number" placeholder="Life(mo)" value={item.lifespanMonths || ""} onChange={(e: any) => updateEditItem(i, 'lifespanMonths', e.target.value ? parseInt(e.target.value, 10) : undefined)} className="w-full sm:w-24 font-mono text-sm" />
                                                                     </div>
-                                                                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                                                                        <span className="text-foreground/50 text-sm">Rs</span>
-                                                                        <Input type="number" step="0.01" placeholder="0.00" value={item.price || ""} onChange={(e: any) => updateEditItem(i, 'price', e.target.value ? parseFloat(e.target.value) : 0)} className="flex-1 sm:w-24 font-mono" />
-                                                                        <Button type="button" variant="ghost" className="text-alert px-2" onClick={() => setEditItems(editItems.filter((_, idx) => idx !== i))}><Trash2 size={14} /></Button>
+                                                                    <div className="flex items-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-1">Unit (Rs)</span>
+                                                                            <Input type="number" step="0.01" placeholder="0.00" value={item.price || ""} onChange={(e: any) => updateEditItem(i, 'price', e.target.value === "" ? 0 : parseFloat(e.target.value))} className="w-20 font-mono" />
+                                                                        </div>
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-1">Total (Rs)</span>
+                                                                            <Input type="number" step="0.01" placeholder="0.00" value={item.price !== undefined ? Number(((item.price || 0) * (item.qty || 1)).toFixed(2)) || "" : ""} onChange={(e: any) => {
+                                                                                const val = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                                                                                const qty = item.qty || 1;
+                                                                                updateEditItem(i, 'price', val / qty);
+                                                                            }} className="w-24 font-mono bg-primary/5 border-primary/20" />
+                                                                        </div>
+                                                                        <Button type="button" variant="ghost" className="text-alert px-2 mb-0.5" onClick={() => setEditItems(editItems.filter((_, idx) => idx !== i))}><Trash2 size={14} /></Button>
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -912,8 +957,8 @@ export default function GarageDashboard() {
                                                                 <Input placeholder="Invoice notes..." value={editNotes} onChange={(e: any) => setEditNotes(e.target.value)} />
                                                             </div>
                                                             <div>
-                                                                <label className="block text-xs font-medium mb-1 text-success">Discount</label>
-                                                                <Input type="number" step="0.01" placeholder="0.00" value={editDiscount || ""} onChange={(e: any) => setEditDiscount(e.target.value ? parseFloat(e.target.value) : 0)} className="font-mono text-success" />
+                                                                <label className="block text-xs font-medium mb-1 text-primary">Service Cost</label>
+                                                                <Input type="number" step="0.01" placeholder="0.00" value={editServiceCost || ""} onChange={(e: any) => setEditServiceCost(e.target.value ? parseFloat(e.target.value) : 0)} className="font-mono text-primary border-primary/30" />
                                                             </div>
                                                         </div>
                                                         <div className="flex justify-between items-center">
@@ -996,9 +1041,12 @@ export default function GarageDashboard() {
                 <div className="hidden print:block w-[210mm] min-h-[297mm] bg-white text-black mx-auto" style={{ padding: '15mm 18mm' }}>
                     {/* Header */}
                     <div className="flex justify-between items-start border-b-2 border-gray-300 pb-6 mb-6">
-                        <div>
-                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">INVOICE</h1>
-                            <p className="text-xs font-medium text-gray-400 mt-1 uppercase tracking-widest">Service Record</p>
+                        <div className="flex items-center gap-4">
+                            <img src="/logo.png" alt="AutoLog Logo" className="h-12 w-auto object-contain" />
+                            <div>
+                                <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">INVOICE</h1>
+                                <p className="text-xs font-medium text-gray-400 mt-1 uppercase tracking-widest">Service Record</p>
+                            </div>
                         </div>
                         <div className="text-right">
                             <h2 className="text-lg font-bold text-gray-800">
@@ -1090,6 +1138,12 @@ export default function GarageDashboard() {
                                             <span>Subtotal</span>
                                             <span className="font-mono">Rs {subtotal.toFixed(2)}</span>
                                         </div>
+                                        {discount < 0 && (
+                                            <div className="flex justify-between py-1.5 text-sm font-semibold text-gray-900 border-t border-gray-200">
+                                                <span>Service Cost</span>
+                                                <span className="font-mono">+Rs {Math.abs(discount).toFixed(2)}</span>
+                                            </div>
+                                        )}
                                         {discount > 0 && (
                                             <div className="flex justify-between py-1.5 text-sm text-green-700 border-t border-gray-200">
                                                 <span>Discount</span>

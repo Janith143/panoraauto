@@ -10,8 +10,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AutoLog & Garage Connect",
+  title: "Panora Auto Connect",
   description: "Professional automotive management platform",
+  manifest: "/manifest.json"
+};
+
+export const viewport = {
+  themeColor: "#0077B6"
 };
 
 export default function RootLayout({

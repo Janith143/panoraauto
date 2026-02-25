@@ -5,7 +5,6 @@ import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Inpu
 import { Car, Wrench, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
     const { user, loading } = useAuth();
@@ -37,45 +36,39 @@ export default function LoginPage() {
 
         try {
             if (isLogin) {
-                const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-            } else {
-                const { data, error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        data: {
-                            full_name: name,
-                            role
-                        }
-                    }
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, role })
                 });
-                if (error) throw error;
 
-                if (data.user) {
-                    try {
-                        if (role === 'garage') {
-                            const { error: gErr } = await supabase.from('garages').insert({
-                                id: data.user.id,
-                                owner_email: email,
-                                name: name
-                            });
-                            if (gErr) throw new Error(`Failed creating garage profile: ${gErr.message}`);
-                        } else {
-                            const { error: oErr } = await supabase.from('owners').insert({
-                                id: data.user.id,
-                                email: email,
-                                full_name: name
-                            });
-                            if (oErr) throw new Error(`Failed creating owner profile: ${oErr.message}`);
-                        }
-                        setSuccessMsg("Account created! You can now log in.");
-                        setIsLogin(true);
-                    } catch (insertErr: any) {
-                        setErrorMsg(insertErr.message);
-                    }
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Invalid credentials');
                 }
+
+                // Allow API to drop cookie and session
+            } else {
+                const res = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, role, name })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || 'Failed to sign up');
+                }
+
+                setSuccessMsg("Account created! You are now logging in...");
+
+                // Allow a brief moment for the user to see the success message before router redirect handles the rest via cookie
             }
+
+            // Re-fetch the user profile globally so context updates and redirects
+            window.location.reload();
+
         } catch (err: any) {
             setErrorMsg(err.message || 'Authentication error');
         } finally {
@@ -85,9 +78,10 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-            <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold text-primary mb-2">AutoLog</h1>
-                <p className="text-foreground/70">Connect with your digital garage</p>
+            <div className="text-center mb-8 flex flex-col items-center">
+                <img src="/logo.png" alt="Panora Auto" className="h-24 w-auto object-contain mb-4" />
+                <h1 className="text-5xl font-extrabold text-primary mb-2">Panora Auto</h1>
+                <p className="text-lg text-foreground/70 font-medium">Connect with your digital garage</p>
             </div>
 
             <Card className="w-full max-w-md">
@@ -134,6 +128,11 @@ export default function LoginPage() {
                                         value={name}
                                         onChange={(e: any) => setName(e.target.value)}
                                     />
+                                    {role === 'garage' && (
+                                        <p className="text-xs text-primary mt-2 font-medium bg-primary/10 p-2 rounded border border-primary/20">
+                                            100% free for 1st year, try now. If you like to continue after 1 year, <a href="https://panoralink.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary/80">contact support team</a>.
+                                        </p>
+                                    )}
                                 </div>
                             </>
                         )}

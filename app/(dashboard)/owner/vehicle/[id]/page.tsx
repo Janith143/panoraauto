@@ -31,6 +31,7 @@ export default function VehicleDetailPage() {
     const [editingDates, setEditingDates] = useState(false);
     const [revDate, setRevDate] = useState("");
     const [insDate, setInsDate] = useState("");
+    const [emiDate, setEmiDate] = useState("");
 
     // Manual Log state
     const [isLogging, setIsLogging] = useState(false);
@@ -135,7 +136,7 @@ export default function VehicleDetailPage() {
 
     const handleUpdateDates = async () => {
         try {
-            await updateVehicleDates(vehicle.id, revDate, insDate);
+            await updateVehicleDates(vehicle.id, revDate, insDate, emiDate);
             setEditingDates(false);
         } catch (err: any) {
             console.error("Caught Exception updating dates:", err);
@@ -386,7 +387,7 @@ export default function VehicleDetailPage() {
                         </>
                     )}
                     <Button variant="ghost" className="border border-primary text-primary hover:bg-primary/20 flex-1 md:flex-none" onClick={() => setIsLogging(!isLogging)}>
-                        Log Maintenance
+                        Maintenance Log
                     </Button>
                 </div>
             </div>
@@ -794,6 +795,7 @@ export default function VehicleDetailPage() {
                             {!editingDates && <Button variant="ghost" size="icon" onClick={() => {
                                 setRevDate(vehicle.revenueLicenseDate || "");
                                 setInsDate(vehicle.insuranceDate || "");
+                                setEmiDate(vehicle.emissionReportDate || "");
                                 setEditingDates(true);
                             }}><Edit2 size={14} /></Button>}
                         </CardHeader>
@@ -808,6 +810,10 @@ export default function VehicleDetailPage() {
                                         <label className="block text-xs text-foreground/50 mb-1">Insurance Renewal Date</label>
                                         <Input type="date" value={insDate} onChange={(e: any) => setInsDate(e.target.value)} />
                                     </div>
+                                    <div>
+                                        <label className="block text-xs text-foreground/50 mb-1">Emission Report Date</label>
+                                        <Input type="date" value={emiDate} onChange={(e: any) => setEmiDate(e.target.value)} />
+                                    </div>
                                     <div className="flex gap-2">
                                         <Button variant="primary" className="flex-1 text-sm h-8 py-0" onClick={handleUpdateDates}>Save</Button>
                                         <Button variant="ghost" className="h-8 text-sm py-0" onClick={() => setEditingDates(false)}>Cancel</Button>
@@ -821,10 +827,16 @@ export default function VehicleDetailPage() {
                                             {vehicle.revenueLicenseDate ? new Date(vehicle.revenueLicenseDate).toLocaleDateString() : "Not Set"}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center pb-3">
                                         <span className="text-sm text-foreground/70">Insurance</span>
                                         <span className={!vehicle.insuranceDate ? "text-warning text-sm font-bold" : "text-sm text-foreground font-mono"}>
                                             {vehicle.insuranceDate ? new Date(vehicle.insuranceDate).toLocaleDateString() : "Not Set"}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center border-t border-panel-border pt-3">
+                                        <span className="text-sm text-foreground/70">Emission Report</span>
+                                        <span className={!vehicle.emissionReportDate ? "text-warning text-sm font-bold" : "text-sm text-foreground font-mono"}>
+                                            {vehicle.emissionReportDate ? new Date(vehicle.emissionReportDate).toLocaleDateString() : "Not Set"}
                                         </span>
                                     </div>
                                 </div>
@@ -842,177 +854,209 @@ export default function VehicleDetailPage() {
                         </CardHeader>
                         <CardContent className="pt-6">
                             <div className="relative border-l-2 border-panel-border ml-4 space-y-10 pb-8">
-                                {paginatedBills.map((bill) => (
-                                    <div key={bill.id} className="relative pl-8">
-                                        {/* Timeline Dot */}
-                                        <div className="absolute w-4 h-4 bg-primary rounded-full -left-[9px] top-1 outline outline-4 outline-panel shadow-[0_0_10px_rgba(0,119,182,0.5)]"></div>
+                                {paginatedBills.map((bill, index) => {
+                                    const isOdoChange = bill.amount === 0 && (!bill.items || bill.items.length === 0);
 
-                                        <div className="bg-background border border-panel-border p-5 rounded-xl hover:border-primary/50 transition-colors group relative">
-                                            {editingBillId !== bill.id && (
-                                                <Button size="icon" variant="ghost" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => startEditBill(bill)}>
-                                                    <Edit2 size={16} className="text-foreground/50 hover:text-foreground" />
-                                                </Button>
-                                            )}
+                                    // Odometer calculation
+                                    const globalIndex = (historyPage - 1) * PAGE_SIZE + index;
+                                    const nextBillWithOdo = vehicleBills.slice(globalIndex + 1).find(b => b.odometer !== undefined && b.odometer !== null);
+                                    const prevOdo = nextBillWithOdo ? nextBillWithOdo.odometer : undefined;
 
-                                            {editingBillId === bill.id ? (
-                                                <div className="mb-4 space-y-4 bg-panel p-5 rounded-lg animate-in fade-in border border-panel-border">
-                                                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-panel-border">
-                                                        <h4 className="font-bold text-sm text-primary uppercase tracking-wider flex items-center gap-2">
-                                                            <Edit2 size={14} /> Full Record Editor
-                                                        </h4>
-                                                        <Button size="icon" variant="ghost" onClick={() => setEditingBillId(null)}>
-                                                            <X size={16} />
-                                                        </Button>
-                                                    </div>
+                                    let colorClass = "text-primary/80 bg-primary/10 border-primary/20";
+                                    let icon = null;
 
-                                                    <div className="grid grid-cols-2 gap-4 mb-4">
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-foreground/50 mb-1 uppercase">Date</label>
-                                                            <Input type="date" value={editBillData.date} onChange={(e: any) => setEditBillData({ ...editBillData, date: e.target.value })} className="font-mono text-sm bg-background border-foreground/20" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-foreground/50 mb-1 uppercase">Odometer</label>
-                                                            <Input type="number" placeholder="Mileage at service" value={editBillData.odometer || ""} onChange={(e: any) => setEditBillData({ ...editBillData, odometer: e.target.value ? parseInt(e.target.value, 10) : undefined })} className="font-mono text-sm bg-background border-foreground/20" />
-                                                        </div>
-                                                    </div>
+                                    if (prevOdo !== undefined && bill.odometer !== undefined && bill.odometer !== null) {
+                                        if (bill.odometer > prevOdo) {
+                                            colorClass = "text-success bg-success/10 border-success/30";
+                                            icon = <span className="text-[10px]">▲</span>;
+                                        } else if (bill.odometer < prevOdo) {
+                                            colorClass = "text-alert bg-alert/10 border-alert/30";
+                                            icon = <span className="text-[10px]">▼</span>;
+                                        }
+                                    }
 
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-foreground/50 mb-2 uppercase">Line Items</label>
-                                                        <div className="space-y-2">
-                                                            {editBillData.items.map((item, idx) => (
-                                                                <div key={idx} className="flex gap-2 items-center bg-background p-2 rounded border border-panel-border">
-                                                                    <Input
-                                                                        value={item.name}
-                                                                        onChange={(e: any) => updateEditBillItem(idx, 'name', e.target.value)}
-                                                                        placeholder="Item Name"
-                                                                        className="flex-1 h-8 text-sm"
-                                                                    />
-                                                                    <Input
-                                                                        type="number"
-                                                                        value={item.lifespanOdo || ""}
-                                                                        onChange={(e: any) => updateEditBillItem(idx, 'lifespanOdo', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                                                                        placeholder="+Lifespan(km)"
-                                                                        className="w-20 h-8 text-sm font-mono"
-                                                                    />
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="text-foreground/50 text-sm">Rs</span>
-                                                                        <Input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            value={item.price || ""}
-                                                                            onChange={(e: any) => updateEditBillItem(idx, 'price', e.target.value ? parseFloat(e.target.value) : 0)}
-                                                                            className="w-32 h-8 text-sm font-mono"
-                                                                        />
-                                                                    </div>
-                                                                    <Button type="button" variant="ghost" className="h-8 w-8 p-0 text-alert shrink-0" onClick={() => {
-                                                                        const newItems = editBillData.items.filter((_, i) => i !== idx);
-                                                                        setEditBillData({ ...editBillData, items: newItems, amount: newItems.reduce((acc, it) => acc + (it.price || 0), 0) });
-                                                                    }}>
-                                                                        <Trash2 size={14} />
-                                                                    </Button>
-                                                                </div>
-                                                            ))}
-                                                            <Button type="button" variant="ghost" size="sm" className="w-full text-xs h-8 border border-dashed border-panel-border" onClick={() => {
-                                                                setEditBillData({ ...editBillData, items: [...editBillData.items, { name: "", price: 0 }] });
-                                                            }}>
-                                                                <Plus size={14} className="mr-1" /> Add Line Item
+                                    return (
+                                        <div key={bill.id} className="relative pl-8">
+                                            {/* Timeline Dot */}
+                                            <div className="absolute w-4 h-4 bg-primary rounded-full -left-[9px] top-1 outline outline-4 outline-panel shadow-[0_0_10px_rgba(0,119,182,0.5)]"></div>
+
+                                            <div className="bg-background border border-panel-border p-5 rounded-xl hover:border-primary/50 transition-colors group relative">
+                                                {editingBillId !== bill.id && (
+                                                    <Button size="icon" variant="ghost" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => startEditBill(bill)}>
+                                                        <Edit2 size={16} className="text-foreground/50 hover:text-foreground" />
+                                                    </Button>
+                                                )}
+
+                                                {editingBillId === bill.id ? (
+                                                    <div className="mb-4 space-y-4 bg-panel p-5 rounded-lg animate-in fade-in border border-panel-border">
+                                                        <div className="flex justify-between items-center mb-2 pb-2 border-b border-panel-border">
+                                                            <h4 className="font-bold text-sm text-primary uppercase tracking-wider flex items-center gap-2">
+                                                                <Edit2 size={14} /> Full Record Editor
+                                                            </h4>
+                                                            <Button size="icon" variant="ghost" onClick={() => setEditingBillId(null)}>
+                                                                <X size={16} />
                                                             </Button>
                                                         </div>
-                                                    </div>
 
-                                                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-panel-border">
-                                                        <span className="text-sm font-bold text-foreground/50 uppercase tracking-wider">Total</span>
-                                                        <div className="font-mono font-bold text-lg text-primary">Rs {editBillData.amount.toFixed(2)}</div>
-                                                    </div>
+                                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-foreground/50 mb-1 uppercase">Date</label>
+                                                                <Input type="date" value={editBillData.date} onChange={(e: any) => setEditBillData({ ...editBillData, date: e.target.value })} className="font-mono text-sm bg-background border-foreground/20" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-foreground/50 mb-1 uppercase">Odometer</label>
+                                                                <Input type="number" placeholder="Mileage at service" value={editBillData.odometer || ""} onChange={(e: any) => setEditBillData({ ...editBillData, odometer: e.target.value ? parseInt(e.target.value, 10) : undefined })} className="font-mono text-sm bg-background border-foreground/20" />
+                                                            </div>
+                                                        </div>
 
-                                                    <Button variant="primary" className="w-full mt-4" onClick={saveEditBill}><Save size={16} className="mr-2" /> Save & Update Record</Button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex justify-between items-start mb-4 pr-8">
-                                                    <div>
-                                                        <h4 className="font-bold text-lg text-foreground">
-                                                            {bill.source === 'garage' ? 'Garage Service' : 'DIY Maintenance'}
-                                                        </h4>
-                                                        <div className="flex items-center gap-3 mt-1">
-                                                            <p className="text-sm text-foreground/50">
-                                                                {new Date(bill.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-                                                            </p>
-                                                            {bill.odometer && (
-                                                                <p className="text-xs font-mono text-primary/80 bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
-                                                                    {bill.odometer.toLocaleString()} km
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-foreground/50 mb-2 uppercase">Line Items</label>
+                                                            <div className="space-y-2">
+                                                                {editBillData.items.map((item, idx) => (
+                                                                    <div key={idx} className="flex gap-2 items-center bg-background p-2 rounded border border-panel-border">
+                                                                        <Input
+                                                                            value={item.name}
+                                                                            onChange={(e: any) => updateEditBillItem(idx, 'name', e.target.value)}
+                                                                            placeholder="Item Name"
+                                                                            className="flex-1 h-8 text-sm"
+                                                                        />
+                                                                        <Input
+                                                                            type="number"
+                                                                            value={item.lifespanOdo || ""}
+                                                                            onChange={(e: any) => updateEditBillItem(idx, 'lifespanOdo', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                                                                            placeholder="+Lifespan(km)"
+                                                                            className="w-20 h-8 text-sm font-mono"
+                                                                        />
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-foreground/50 text-sm">Rs</span>
+                                                                            <Input
+                                                                                type="number"
+                                                                                step="0.01"
+                                                                                value={item.price || ""}
+                                                                                onChange={(e: any) => updateEditBillItem(idx, 'price', e.target.value ? parseFloat(e.target.value) : 0)}
+                                                                                className="w-32 h-8 text-sm font-mono"
+                                                                            />
+                                                                        </div>
+                                                                        <Button type="button" variant="ghost" className="h-8 w-8 p-0 text-alert shrink-0" onClick={() => {
+                                                                            const newItems = editBillData.items.filter((_, i) => i !== idx);
+                                                                            setEditBillData({ ...editBillData, items: newItems, amount: newItems.reduce((acc, it) => acc + (it.price || 0), 0) });
+                                                                        }}>
+                                                                            <Trash2 size={14} />
+                                                                        </Button>
+                                                                    </div>
+                                                                ))}
+                                                                <Button type="button" variant="ghost" size="sm" className="w-full text-xs h-8 border border-dashed border-panel-border" onClick={() => {
+                                                                    setEditBillData({ ...editBillData, items: [...editBillData.items, { name: "", price: 0 }] });
+                                                                }}>
+                                                                    <Plus size={14} className="mr-1" /> Add Line Item
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex justify-between items-center pt-2 mt-2 border-t border-panel-border">
+                                                            <span className="text-sm font-bold text-foreground/50 uppercase tracking-wider">Total</span>
+                                                            <div className="font-mono font-bold text-lg text-primary">Rs {editBillData.amount.toFixed(2)}</div>
+                                                        </div>
+
+                                                        <Button variant="primary" className="w-full mt-4" onClick={saveEditBill}><Save size={16} className="mr-2" /> Save & Update Record</Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-between items-start mb-4 pr-8">
+                                                        <div>
+                                                            <h4 className="font-bold text-lg text-foreground">
+                                                                {isOdoChange ? 'Odometer Adjustment' : (bill.source === 'garage' ? 'Garage Service' : 'DIY Maintenance')}
+                                                            </h4>
+                                                            <div className="flex items-center gap-3 mt-1">
+                                                                <p className="text-sm text-foreground/50">
+                                                                    {new Date(bill.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
                                                                 </p>
+                                                                {bill.odometer !== undefined && bill.odometer !== null && (
+                                                                    <p className={`text-xs font-mono px-2 py-0.5 rounded border flex items-center gap-1 ${colorClass}`}>
+                                                                        {icon} {bill.odometer.toLocaleString()} km
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="font-mono text-xl font-bold text-foreground/80">Rs {bill.amount.toFixed(2)}</span>
+                                                            {bill.source === 'garage' && (
+                                                                <div className="flex items-center gap-1 text-xs text-success mt-1 justify-end font-medium">
+                                                                    <CheckCircle size={12} /> Garage Verified
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <span className="font-mono text-xl font-bold text-foreground/80">Rs {bill.amount.toFixed(2)}</span>
-                                                        {bill.source === 'garage' && (
-                                                            <div className="flex items-center gap-1 text-xs text-success mt-1 justify-end font-medium">
-                                                                <CheckCircle size={12} /> Garage Verified
+                                                )}
+                                                {!(bill.amount === 0 && (!bill.items || bill.items.length === 0)) ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            className="w-full flex items-center justify-between p-2 mt-2 bg-panel/50 hover:bg-panel border border-panel-border/50 rounded-lg text-xs font-bold text-foreground/60 transition-colors"
+                                                            onClick={() => setExpandedBillId(expandedBillId === bill.id ? null : bill.id)}
+                                                        >
+                                                            <span>{expandedBillId === bill.id ? "Hide Details" : "View Invoice Details"}</span>
+                                                        </button>
+
+                                                        {expandedBillId === bill.id && (
+                                                            <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2">
+                                                                {bill.notes && (
+                                                                    <div className="bg-panel/30 rounded-lg p-3 text-sm border border-panel-border/30">
+                                                                        <p className="text-foreground/50 text-xs uppercase font-bold mb-1 tracking-wider">Notes</p>
+                                                                        <p className="text-foreground/80">{bill.notes}</p>
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="bg-panel rounded-lg p-2 border border-panel-border/50">
+                                                                    <h5 className="text-[10px] font-bold text-foreground/40 uppercase tracking-wider mb-1.5 px-1">Line Items</h5>
+                                                                    <ul className="space-y-1">
+                                                                        {bill.items?.map((item, idx) => (
+                                                                            <li key={idx} className="flex justify-between text-xs items-center px-1 hover:bg-background/50 rounded py-0.5 transition-colors">
+                                                                                <span className="text-foreground/80">• {item.name}</span>
+                                                                                <div className="text-right flex items-center gap-2">
+                                                                                    {item.lifespanOdo && <span className="text-[10px] text-foreground/40 border border-panel-border px-1.5 py-0 rounded bg-background">+{item.lifespanOdo / 1000}k km</span>}
+                                                                                    <span className="font-mono text-primary font-bold">Rs {item.price.toFixed(2)}</span>
+                                                                                </div>
+                                                                            </li>
+                                                                        ))}
+                                                                        {!bill.items && (
+                                                                            <li className="flex justify-between text-xs italic text-foreground/50 px-1">
+                                                                                Legacy record
+                                                                            </li>
+                                                                        )}
+                                                                    </ul>
+                                                                </div>
                                                             </div>
                                                         )}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <button
-                                                type="button"
-                                                className="w-full flex items-center justify-between p-2 mt-2 bg-panel/50 hover:bg-panel border border-panel-border/50 rounded-lg text-xs font-bold text-foreground/60 transition-colors"
-                                                onClick={() => setExpandedBillId(expandedBillId === bill.id ? null : bill.id)}
-                                            >
-                                                <span>{expandedBillId === bill.id ? "Hide Details" : "View Invoice Details"}</span>
-                                            </button>
-
-                                            {expandedBillId === bill.id && (
-                                                <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2">
-                                                    {bill.notes && (
-                                                        <div className="bg-panel/30 rounded-lg p-3 text-sm border border-panel-border/30">
-                                                            <p className="text-foreground/50 text-xs uppercase font-bold mb-1 tracking-wider">Notes</p>
-                                                            <p className="text-foreground/80">{bill.notes}</p>
+                                                    </>
+                                                ) : (
+                                                    bill.notes && (
+                                                        <div className="mt-2 bg-panel/30 rounded-lg p-3 text-sm border border-panel-border/30">
+                                                            <p className="text-foreground/50 text-xs uppercase font-bold mb-1 tracking-wider">Reason</p>
+                                                            <p className="text-foreground/80 italic">{bill.notes}</p>
                                                         </div>
-                                                    )}
+                                                    )
+                                                )}
 
-                                                    <div className="bg-panel rounded-lg p-2 border border-panel-border/50">
-                                                        <h5 className="text-[10px] font-bold text-foreground/40 uppercase tracking-wider mb-1.5 px-1">Line Items</h5>
-                                                        <ul className="space-y-1">
-                                                            {bill.items?.map((item, idx) => (
-                                                                <li key={idx} className="flex justify-between text-xs items-center px-1 hover:bg-background/50 rounded py-0.5 transition-colors">
-                                                                    <span className="text-foreground/80">• {item.name}</span>
-                                                                    <div className="text-right flex items-center gap-2">
-                                                                        {item.lifespanOdo && <span className="text-[10px] text-foreground/40 border border-panel-border px-1.5 py-0 rounded bg-background">+{item.lifespanOdo / 1000}k km</span>}
-                                                                        <span className="font-mono text-primary font-bold">Rs {item.price.toFixed(2)}</span>
-                                                                    </div>
-                                                                </li>
+                                                {bill.photos && bill.photos.length > 0 && (
+                                                    <div>
+                                                        <h5 className="text-xs font-bold text-foreground/40 uppercase tracking-wider mb-2">Evidence</h5>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {bill.photos?.map((photo, idx) => (
+                                                                <button
+                                                                    key={idx}
+                                                                    onClick={() => openLightbox(bill.photos || [], idx)}
+                                                                    className="w-20 h-20 rounded-lg overflow-hidden border border-panel-border hover:border-primary transition-all cursor-zoom-in"
+                                                                >
+                                                                    <img src={photo} alt="Service Evidence" className="w-full h-full object-cover" />
+                                                                </button>
                                                             ))}
-                                                            {!bill.items && (
-                                                                <li className="flex justify-between text-xs italic text-foreground/50 px-1">
-                                                                    Legacy record
-                                                                </li>
-                                                            )}
-                                                        </ul>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            )}
-
-                                            {bill.photos && bill.photos.length > 0 && (
-                                                <div>
-                                                    <h5 className="text-xs font-bold text-foreground/40 uppercase tracking-wider mb-2">Evidence</h5>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {bill.photos?.map((photo, idx) => (
-                                                            <button
-                                                                key={idx}
-                                                                onClick={() => openLightbox(bill.photos || [], idx)}
-                                                                className="w-20 h-20 rounded-lg overflow-hidden border border-panel-border hover:border-primary transition-all cursor-zoom-in"
-                                                            >
-                                                                <img src={photo} alt="Service Evidence" className="w-full h-full object-cover" />
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
 
                                 {vehicleBills.length === 0 && (
                                     <div className="pl-8 text-foreground/40 italic pt-4">
@@ -1102,6 +1146,6 @@ export default function VehicleDetailPage() {
                 <option value="Emissions Test" />
                 <option value="Detailing" />
             </datalist>
-        </div >
+        </div>
     );
 }
