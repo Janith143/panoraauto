@@ -5,6 +5,7 @@ import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Inpu
 import { Car, Wrench, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
     const { user, loading } = useAuth();
@@ -175,27 +176,12 @@ export default function LoginPage() {
                         </button>
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-panel-border">
-                        <p className="text-xs text-center text-foreground/50 mb-4 uppercase tracking-widest font-bold">Demo Profiles</p>
-                        <div className="space-y-2">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                className="w-full text-xs justify-start border border-panel-border bg-panel/50 hover:bg-panel"
-                                onClick={() => { setEmail("udara@example.com"); setPassword("password123"); setIsLogin(true); }}
-                            >
-                                <Car size={14} className="mr-2 text-primary" /> Owner: Udara Wijesundara
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                className="w-full text-xs justify-start border border-panel-border bg-panel/50 hover:bg-panel"
-                                onClick={() => { setEmail("madduma@example.com"); setPassword("password123"); setIsLogin(true); }}
-                            >
-                                <Wrench size={14} className="mr-2 text-primary" /> Garage: Madduma Repairs
-                            </Button>
-                        </div>
+                    <div className="mt-8 text-center border-t border-panel-border pt-4">
+                        <Link href="/privacy" className="text-xs text-foreground/60 hover:text-primary transition-colors">
+                            Privacy Policy
+                        </Link>
                     </div>
+
                 </CardContent>
             </Card>
         </div>
