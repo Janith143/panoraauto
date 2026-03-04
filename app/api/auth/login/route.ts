@@ -25,7 +25,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
         }
 
-        if (!user.isEmailVerified) {
+        if (!(user as any).isEmailVerified) {
             return NextResponse.json({ error: 'Please verify your email address before logging in.' }, { status: 403 });
         }
 
