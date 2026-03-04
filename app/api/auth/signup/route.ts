@@ -25,14 +25,14 @@ export async function POST(request: Request) {
             if (existing) return NextResponse.json({ error: 'Email already exists' }, { status: 400 });
 
             user = await prisma.garage.create({
-                data: { ownerEmail: email, password: hashedPassword, name, role, verificationToken }
+                data: { ownerEmail: email, password: hashedPassword, name, role, verificationToken } as any
             });
         } else {
             const existing = await prisma.owner.findUnique({ where: { email } });
             if (existing) return NextResponse.json({ error: 'Email already exists' }, { status: 400 });
 
             user = await prisma.owner.create({
-                data: { email, password: hashedPassword, fullName: name, role, verificationToken }
+                data: { email, password: hashedPassword, fullName: name, role, verificationToken } as any
             });
         }
 

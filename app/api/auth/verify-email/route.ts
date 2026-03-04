@@ -14,12 +14,12 @@ export async function POST(request: Request) {
         }
 
         // Try to find the token in owners
-        let owner = await prisma.owner.findUnique({ where: { verificationToken: token } });
+        let owner = await prisma.owner.findUnique({ where: { verificationToken: token } as any });
 
         if (owner) {
             await prisma.owner.update({
                 where: { id: owner.id },
-                data: { isEmailVerified: true, verificationToken: null }
+                data: { isEmailVerified: true, verificationToken: null } as any
             });
 
             const jwtToken = jwt.sign(
@@ -40,12 +40,12 @@ export async function POST(request: Request) {
         }
 
         // Try to find the token in garages
-        let garage = await prisma.garage.findUnique({ where: { verificationToken: token } });
+        let garage = await prisma.garage.findUnique({ where: { verificationToken: token } as any });
 
         if (garage) {
             await prisma.garage.update({
                 where: { id: garage.id },
-                data: { isEmailVerified: true, verificationToken: null }
+                data: { isEmailVerified: true, verificationToken: null } as any
             });
 
             const jwtToken = jwt.sign(
