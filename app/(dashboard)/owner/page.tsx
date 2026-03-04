@@ -7,8 +7,6 @@ import { useVehicles, ServiceItem } from "@/app/context/VehicleContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, HealthBar, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/app/components/ui";
 import { Lightbox } from "@/app/components/ui/lightbox";
 import { Plus, Trash2, FileText, X, Loader2, Car, Clock } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-
 export default function OwnerDashboard() {
     const router = useRouter();
     const { user } = useAuth();

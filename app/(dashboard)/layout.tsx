@@ -4,6 +4,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Button } from "@/app/components/ui";
 import { UserSettingsModal } from "@/app/components/ui/UserSettingsModal";
 import { NotificationDropdown } from "@/app/components/ui/NotificationDropdown";
+import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -75,7 +76,9 @@ export default function DashboardLayout({
         <div className="min-h-screen bg-background flex flex-col">
             <nav className="border-b border-panel-border bg-panel px-6 py-4 flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-4">
-                    <img src="/logo.png" alt="Panora Auto Logo" className="h-14 w-auto object-contain" />
+                    <Link href="/">
+                        <img src="/logo.png" alt="Panora Auto Logo" className="h-14 w-auto object-contain cursor-pointer hover:opacity-80 transition-opacity" />
+                    </Link>
                     {user && (
                         <span className="text-sm px-2 py-1 bg-panel-border rounded-md text-foreground/80">
                             {user.role}
@@ -120,7 +123,9 @@ export default function DashboardLayout({
             <footer className="border-t border-panel-border bg-panel px-6 py-6 mt-8 shrink-0">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-foreground/60">
                     <div className="flex items-center gap-3">
-                        <img src="/logo.png" alt="Panora Auto Logo" className="h-10 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity" />
+                        <Link href="/">
+                            <img src="/logo.png" alt="Panora Auto Logo" className="h-10 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity cursor-pointer" />
+                        </Link>
                         <span className="font-medium text-base">&copy; {new Date().getFullYear()} Panora Auto. All rights reserved.</span>
                     </div>
                 </div>

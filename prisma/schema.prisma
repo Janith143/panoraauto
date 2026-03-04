@@ -14,6 +14,8 @@ model Owner {
   fullName          String   @map("full_name")
   password          String?  // Needed for custom Auth
   role              String   @default("owner")
+  isEmailVerified   Boolean  @default(false) @map("is_email_verified")
+  verificationToken String?  @unique @map("verification_token")
   createdAt         DateTime @default(now()) @map("created_at")
 
   vehicles      Vehicle[]
@@ -53,6 +55,8 @@ model Garage {
   password   String?  // Needed for custom Auth
   role       String   @default("garage")
   address    String?
+  isEmailVerified   Boolean  @default(false) @map("is_email_verified")
+  verificationToken String?  @unique @map("verification_token")
   createdAt  DateTime @default(now()) @map("created_at")
 
   customers  GarageCustomer[]

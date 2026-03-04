@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { sendVerificationEmail } from '@/lib/email';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_local_dev_123';
@@ -17,37 +18,30 @@ export async function POST(request: Request) {
         const hashedPassword = await bcrypt.hash(password, 10);
         let user;
 
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+
         if (role === 'garage') {
             const existing = await prisma.garage.findUnique({ where: { ownerEmail: email } });
             if (existing) return NextResponse.json({ error: 'Email already exists' }, { status: 400 });
 
             user = await prisma.garage.create({
-                data: { ownerEmail: email, password: hashedPassword, name, role }
+                data: { ownerEmail: email, password: hashedPassword, name, role, verificationToken }
             });
         } else {
             const existing = await prisma.owner.findUnique({ where: { email } });
             if (existing) return NextResponse.json({ error: 'Email already exists' }, { status: 400 });
 
             user = await prisma.owner.create({
-                data: { email, password: hashedPassword, fullName: name, role }
+                data: { email, password: hashedPassword, fullName: name, role, verificationToken }
             });
         }
 
-        const token = jwt.sign(
-            { id: user.id, email: role === 'garage' ? (user as any).ownerEmail : (user as any).email, role, name: role === 'garage' ? (user as any).name : (user as any).fullName },
-            JWT_SECRET,
-            { expiresIn: '30d' }
-        );
+        // Send verification email
+        await sendVerificationEmail(email, verificationToken);
 
-        const response = NextResponse.json({ user: { id: user.id, email, role, name } }, { status: 200 });
-        response.cookies.set('auth_token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 30 * 24 * 60 * 60
-        });
-
-        return response;
+        return NextResponse.json({
+            message: 'Registration successful. Please check your email to verify your account before logging in.'
+        }, { status: 201 });
 
     } catch (error: any) {
         console.error('Signup error:', error);

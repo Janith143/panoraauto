@@ -22,8 +22,8 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!loading && user) {
-            if (user.role === 'garage') router.push('/garage');
-            else router.push('/owner');
+            if (user.role === 'garage') router.replace('/garage');
+            else router.replace('/owner');
         }
     }, [user, loading, router]);
 
@@ -49,7 +49,8 @@ export default function LoginPage() {
                     throw new Error(data.error || 'Invalid credentials');
                 }
 
-                // Allow API to drop cookie and session
+                // For login, redirect to dashboard by reloading page
+                window.location.replace('/');
             } else {
                 const res = await fetch('/api/auth/signup', {
                     method: 'POST',
@@ -62,13 +63,12 @@ export default function LoginPage() {
                     throw new Error(data.error || 'Failed to sign up');
                 }
 
-                setSuccessMsg("Account created! You are now logging in...");
-
-                // Allow a brief moment for the user to see the success message before router redirect handles the rest via cookie
+                setSuccessMsg("Account created! Please check your email to verify your account.");
+                // For signup, don't redirect to / since they aren't logged in yet
+                // Clear form to allow them to go to email
+                setEmail("");
+                setPassword("");
             }
-
-            // Re-fetch the user profile globally so context updates and redirects
-            window.location.reload();
 
         } catch (err: any) {
             setErrorMsg(err.message || 'Authentication error');
