@@ -2,7 +2,7 @@
 
 import { useAuth } from "./context/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Loader2,
   Car,
@@ -16,7 +16,9 @@ import {
   Globe,
   Lock,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  Motorbike,
+  Bus
 } from "lucide-react";
 import { Button } from "@/app/components/ui";
 import Link from "next/link";
@@ -65,79 +67,113 @@ export default function Home() {
       <main className="pt-16">
         {/* Hero Section */}
         <section className="relative px-4 py-16 sm:py-24 lg:py-32 overflow-hidden flex items-center min-h-[calc(100vh-4rem)]">
+          {/* Moving Vehicles Area */}
+          <style>{`
+            @keyframes driveX {
+              0% { transform: translateX(100vw); }
+              100% { transform: translateX(-100vw); }
+            }
+          `}</style>
+          <div className="absolute top-0 left-0 w-full h-[50vh] overflow-hidden pointer-events-none z-20">
+            <div className="absolute top-16 right-0 flex gap-[10vw] items-center opacity-90" style={{ animation: 'driveX 25s linear infinite' }}>
+              <Car className="w-16 h-16 -scale-x-100 text-green-500 drop-shadow-2xl" />
+              <Bus className="w-24 h-24 -scale-x-100 text-blue-500 drop-shadow-2xl opacity-90" />
+              <Motorbike className="w-16 h-16 -scale-x-100 text-orange-500 drop-shadow-2xl" />
+              <Car className="w-20 h-20 -scale-x-100 text-primary drop-shadow-2xl" />
+              <Car className="w-16 h-16 -scale-x-100 text-purple-500 drop-shadow-2xl opacity-80" />
+            </div>
+          </div>
+
           {/* Background decoration */}
           <div className="absolute top-0 right-0 w-full h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10 translate-x-1/3" />
 
           <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
             {/* Left Content */}
             <div className="text-center lg:text-left z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-sm mb-6 sm:mb-8 border border-primary/20 shadow-sm animate-fade-in mx-auto lg:mx-0">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                </span>
-                The Ultimate Digital Logbook
-              </div>
+              <FadeIn delay={100} direction="up">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-sm mb-6 sm:mb-8 border border-primary/20 shadow-sm animate-fade-in mx-auto lg:mx-0">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  </span>
+                  The Ultimate Digital Logbook
+                </div>
+              </FadeIn>
 
-              <h1 className="text-5xl sm:text-6xl xl:text-7xl font-extrabold text-foreground tracking-tight mb-6 leading-[1.1]">
-                Smart Vehicles. <br className="hidden lg:block" />
-                <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-400">Smarter Management.</span>
-              </h1>
+              <FadeIn delay={200} direction="up">
+                <h1 className="text-5xl sm:text-6xl xl:text-7xl font-extrabold text-foreground tracking-tight mb-6 leading-[1.1]">
+                  Smart Vehicles. <br className="hidden lg:block" />
+                  <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-400">Smarter Management.</span>
+                </h1>
+              </FadeIn>
 
-              <p className="text-lg md:text-xl text-foreground/70 mb-10 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                Protect your investment and streamline your maintenance. Panora Auto brings your vehicle's entire history, documents, and service reminders into one secure digital ecosystem.
-              </p>
+              <FadeIn delay={300} direction="up">
+                <p className="text-lg md:text-xl text-foreground/70 mb-10 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                  Protect your investment and streamline your maintenance. Panora Auto brings your vehicle's entire history, documents, and service reminders into one secure digital ecosystem.
+                </p>
+              </FadeIn>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center w-full sm:w-auto">
-                <Link href="/login" className="w-full sm:w-auto">
-                  <Button variant="primary" className="w-full sm:w-auto h-14 sm:h-16 px-10 text-lg font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all transition-transform rounded-2xl">
-                    Log In
-                  </Button>
-                </Link>
-                <Link href="/login" className="w-full sm:w-auto">
-                  <Button variant="ghost" className="w-full sm:w-auto h-14 sm:h-16 px-10 text-lg font-bold border-2 border-panel-border hover:border-primary/30 group hover:bg-primary/5 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all">
-                    Create Free Account
-                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform text-primary" />
-                  </Button>
-                </Link>
-              </div>
+              <FadeIn delay={400} direction="up">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center w-full sm:w-auto">
+                  <Link href="/login" className="w-full sm:w-auto">
+                    <Button variant="primary" className="w-full sm:w-auto h-14 sm:h-16 px-10 text-lg font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-1 hover:scale-105 active:scale-95 transition-all duration-300 rounded-2xl">
+                      Log In
+                    </Button>
+                  </Link>
+                  <Link href="/login" className="w-full sm:w-auto">
+                    <Button variant="ghost" className="w-full sm:w-auto h-14 sm:h-16 px-6 sm:px-10 text-base sm:text-lg font-bold border-2 border-panel-border hover:border-primary/30 group hover:bg-primary/5 rounded-full bg-white shadow-sm hover:shadow-md hover:-translate-y-1 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-3">
+                      <div className="flex -space-x-1 sm:-space-x-2 mr-2 bg-primary/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full">
+                        <Car size={18} className="text-primary hover:-translate-y-1 transition-transform" />
+                        <Motorbike size={18} className="text-primary hover:-translate-y-1 transition-transform delay-75" />
+                        <Bus size={18} className="text-primary hover:-translate-y-1 transition-transform delay-150" />
+                      </div>
+                      Register your Vehicle
+                      <ArrowRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform text-primary" />
+                    </Button>
+                  </Link>
+                </div>
+              </FadeIn>
 
-              <div className="mt-8 flex items-center justify-center lg:justify-start gap-4 text-sm text-foreground/60 font-medium">
-                <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-success" /> No Credit Card</span>
-                <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-success" /> Setup in Minutes</span>
-              </div>
+              <FadeIn delay={500} direction="up">
+                <div className="mt-8 flex items-center justify-center lg:justify-start gap-4 text-sm text-foreground/60 font-medium">
+                  <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-success" /> No Credit Card</span>
+                  <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-success" /> Setup in Minutes</span>
+                </div>
+              </FadeIn>
             </div>
 
             {/* Right Content / Image Area */}
-            <div className="relative w-full aspect-[4/3] lg:aspect-square max-w-2xl mx-auto hidden md:block">
-              {/* Decorative blobs behind image */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-gradient-to-tr from-primary/20 via-blue-400/10 to-transparent rounded-full blur-[60px] -z-10" />
+            <div className="relative w-full aspect-[4/3] lg:aspect-square max-w-2xl mx-auto hidden md:block z-10">
+              <FadeIn delay={400} direction="left" className="w-full h-full">
+                {/* Decorative blobs behind image */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-gradient-to-tr from-primary/20 via-blue-400/10 to-transparent rounded-full blur-[60px] -z-10" />
 
-              {/* Floating Review Card */}
-              <div className="absolute -left-8 top-1/4 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white z-20 animate-fade-in hidden lg:flex items-center gap-4">
-                <div className="w-12 h-12 bg-success/20 rounded-full flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6 text-success" />
+                {/* Floating Review Card */}
+                <div className="absolute -left-8 top-1/4 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white z-20 animate-fade-in hidden lg:flex items-center gap-4">
+                  <div className="w-12 h-12 bg-success/20 rounded-full flex items-center justify-center">
+                    <ShieldCheck className="w-6 h-6 text-success" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm">Service History Saved</div>
+                    <div className="text-xs text-foreground/60">2 mins ago</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-bold text-sm">Service History Saved</div>
-                  <div className="text-xs text-foreground/60">2 mins ago</div>
+
+                {/* Main Image Container */}
+                <div className="relative w-full h-full rounded-[2.5rem] overflow-hidden shadow-2xl ring-1 ring-black/5 bg-slate-100 flex items-center justify-center">
+                  <video
+                    src="/hero-video.mp4"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover rounded-[2.5rem] hover:scale-105 transition-transform duration-700 ease-out"
+                  />
+
+                  {/* Gradient overlay to make it look premium */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                 </div>
-              </div>
-
-              {/* Main Image Container */}
-              <div className="relative w-full h-full rounded-[2.5rem] overflow-hidden shadow-2xl ring-1 ring-black/5 bg-slate-100 flex items-center justify-center">
-                <video
-                  src="/hero-video.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="absolute inset-0 w-full h-full object-cover rounded-[2.5rem] hover:scale-105 transition-transform duration-700 ease-out"
-                />
-
-                {/* Gradient overlay to make it look premium */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
-              </div>
+              </FadeIn>
             </div>
           </div>
         </section>
@@ -145,13 +181,15 @@ export default function Home() {
         {/* Features for Owners */}
         <section className="py-20 px-4 bg-white border-y border-panel-border">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6 ring-8 ring-primary/5">
-                <Car className="w-8 h-8" />
+            <FadeIn>
+              <div className="text-center mb-16">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6 ring-8 ring-primary/5">
+                  <Car className="w-8 h-8" />
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">For Vehicle Owners</h2>
+                <p className="text-lg text-foreground/60 max-w-2xl mx-auto">Protect your investment with comprehensive digital records and proactive maintenance tools.</p>
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">For Vehicle Owners</h2>
-              <p className="text-lg text-foreground/60 max-w-2xl mx-auto">Protect your investment with comprehensive digital records and proactive maintenance tools.</p>
-            </div>
+            </FadeIn>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               <FeatureCard
@@ -179,6 +217,11 @@ export default function Home() {
                 title="Real-Time Service Updates"
                 description="Receive instant notifications when your vehicle is serviced. Track what was done, what parts were replaced, and what’s due next."
               />
+              <FeatureCard
+                icon={<Users className="w-6 h-6" />}
+                title="Seamless Ownership Transfer"
+                description="Transfer your vehicle’s complete digital history to the new owner with a single click, instantly boosting trust and resale value."
+              />
             </div>
           </div>
         </section>
@@ -187,13 +230,15 @@ export default function Home() {
         <section className="py-20 px-4 relative overflow-hidden">
           <div className="absolute top-1/2 left-0 w-full h-full bg-orange-500/5 rounded-full blur-[100px] -z-10 -translate-y-1/2" />
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-100 text-orange-600 mb-6 ring-8 ring-orange-100/50">
-                <Wrench className="w-8 h-8" />
+            <FadeIn>
+              <div className="text-center mb-16">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-100 text-orange-600 mb-6 ring-8 ring-orange-100/50">
+                  <Wrench className="w-8 h-8" />
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">For Garages & Service Centers</h2>
+                <p className="text-lg text-foreground/60 max-w-2xl mx-auto">Modernize your operations and build lasting customer relationships.</p>
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">For Garages & Service Centers</h2>
-              <p className="text-lg text-foreground/60 max-w-2xl mx-auto">Modernize your operations and build lasting customer relationships.</p>
-            </div>
+            </FadeIn>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               <FeatureCard
@@ -206,12 +251,6 @@ export default function Home() {
                 icon={<Users className="w-6 h-6" />}
                 title="Customer Management System"
                 description="Maintain customer history, track previous services, and build long-term relationships with automated follow-ups."
-                color="orange"
-              />
-              <FeatureCard
-                icon={<Bell className="w-6 h-6" />}
-                title="Service Reminders & Engagement"
-                description="Send automated maintenance reminders to customers to increase repeat business and improve retention rates."
                 color="orange"
               />
               <FeatureCard
@@ -233,7 +272,7 @@ export default function Home() {
         {/* Ecosystem & Security */}
         <section className="py-24 px-4 bg-[#0F172A] text-white">
           <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-            <div>
+            <FadeIn direction="right">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/20 text-primary mb-6">
                 <Globe className="w-6 h-6 text-white" />
               </div>
@@ -255,18 +294,20 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </FadeIn>
 
-            <div className="bg-slate-800/50 border border-slate-700 p-8 sm:p-10 rounded-3xl relative overflow-hidden backdrop-blur-sm shadow-2xl">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-[80px] -z-10 translate-x-1/3 -translate-y-1/3" />
-              <div className="w-12 h-12 rounded-xl bg-slate-700/50 flex items-center justify-center mb-6">
-                <Lock className="w-6 h-6 text-primary" />
+            <FadeIn direction="left" delay={200}>
+              <div className="bg-slate-800/50 border border-slate-700 p-8 sm:p-10 rounded-3xl relative overflow-hidden backdrop-blur-sm shadow-2xl hover:shadow-primary/20 hover:border-slate-600 transition-all duration-500 group cursor-pointer hover:-translate-y-2">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-[80px] -z-10 translate-x-1/3 -translate-y-1/3 group-hover:scale-125 transition-transform duration-700" />
+                <div className="w-12 h-12 rounded-xl bg-slate-700/50 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500">
+                  <Lock className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">Security & Reliability</h3>
+                <p className="text-slate-300 leading-relaxed mb-6">
+                  Your vehicle data is valuable. That’s why Panora Auto uses secure, encrypted cloud infrastructure to protect your information. Only authorized users can access service records and documentation.
+                </p>
               </div>
-              <h3 className="text-2xl font-bold mb-4">Security & Reliability</h3>
-              <p className="text-slate-300 leading-relaxed mb-6">
-                Your vehicle data is valuable. That’s why Panora Auto uses secure, encrypted cloud infrastructure to protect your information. Only authorized users can access service records and documentation.
-              </p>
-            </div>
+            </FadeIn>
           </div>
         </section>
 
@@ -274,36 +315,40 @@ export default function Home() {
         <section className="py-24 px-4 bg-white border-b border-panel-border relative overflow-hidden">
           <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.015] pointer-events-none mix-blend-overlay"></div>
           <div className="max-w-4xl mx-auto text-center relative z-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-8">💡 Why Choose Panora Auto?</h2>
-            <div className="flex flex-wrap justify-center gap-3 mb-16">
-              {[
-                "No more paper records",
-                "No missed maintenance schedules",
-                "Increased resale value",
-                "Stronger trust between garages & customers",
-                "All vehicle information in one place"
-              ].map((reason, i) => (
-                <div key={i} className="bg-primary/5 border border-primary/10 text-primary-hover px-5 py-2.5 rounded-full font-medium flex items-center gap-2 shadow-sm">
-                  <CheckCircle className="w-4 h-4 text-primary" />
-                  {reason}
-                </div>
-              ))}
-            </div>
+            <FadeIn>
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-8">💡 Why Choose Panora Auto?</h2>
+              <div className="flex flex-wrap justify-center gap-3 mb-16">
+                {[
+                  "No more paper records",
+                  "No missed maintenance schedules",
+                  "Increased resale value",
+                  "Stronger trust between garages & customers",
+                  "All vehicle information in one place"
+                ].map((reason, i) => (
+                  <div key={i} className="bg-primary/5 border border-primary/10 text-primary-hover px-5 py-2.5 rounded-full font-medium flex items-center gap-2 shadow-sm">
+                    <CheckCircle className="w-4 h-4 text-primary" />
+                    {reason}
+                  </div>
+                ))}
+              </div>
+            </FadeIn>
 
-            <div className="bg-background border border-panel-border rounded-3xl p-8 sm:p-14 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-foreground/5 relative overflow-hidden">
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">🚀 Take Control of Your Vehicle’s Future</h2>
-              <p className="text-xl text-foreground/60 mb-10 max-w-2xl mx-auto leading-relaxed">
-                Managing vehicle maintenance shouldn’t be complicated. With Panora Auto, everything is organized, automated, and accessible.
-              </p>
-              <Link href="/login">
-                <Button variant="primary" className="h-14 px-8 text-lg font-bold group shadow-lg shadow-primary/20">
-                  Start your digital vehicle journey today
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-            </div>
+            <FadeIn delay={200}>
+              <div className="bg-background border border-panel-border rounded-3xl p-8 sm:p-14 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_40px_rgb(0,0,0,0.12)] hover:-translate-y-2 transition-all duration-500 ring-1 ring-foreground/5 relative overflow-hidden group">
+                <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/20 transition-colors duration-700 group-hover:scale-125" />
+                <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/20 transition-colors duration-700 group-hover:scale-125" />
+                <h2 className="text-3xl md:text-4xl font-bold mb-6">🚀 Take Control of Your Vehicle’s Future</h2>
+                <p className="text-xl text-foreground/60 mb-10 max-w-2xl mx-auto leading-relaxed">
+                  Managing vehicle maintenance shouldn’t be complicated. With Panora Auto, everything is organized, automated, and accessible.
+                </p>
+                <Link href="/login">
+                  <Button variant="primary" className="h-14 px-8 text-lg font-bold group shadow-lg shadow-primary/20">
+                    Start your digital vehicle journey today
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+              </div>
+            </FadeIn>
           </div>
         </section>
       </main>
@@ -334,15 +379,52 @@ function FeatureCard({
   const isOrange = color === "orange";
 
   return (
-    <div className="p-6 md:p-8 rounded-2xl border border-panel-border bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform ${isOrange
-        ? 'bg-orange-50 text-orange-600'
-        : 'bg-primary/10 text-primary'
-        }`}>
-        {icon}
+    <FadeIn>
+      <div className="p-6 md:p-8 rounded-2xl border border-panel-border bg-white shadow-sm hover:shadow-2xl hover:-translate-y-2 hover:scale-[1.02] cursor-pointer transition-all duration-500 group h-full">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 group-hover:scale-125 group-hover:rotate-6 transition-transform duration-500 ${isOrange
+          ? 'bg-orange-50 text-orange-600'
+          : 'bg-primary/10 text-primary'
+          }`}>
+          {icon}
+        </div>
+        <h3 className="text-xl font-bold text-foreground mb-3">{title}</h3>
+        <p className="text-foreground/60 leading-relaxed text-sm md:text-base">{description}</p>
       </div>
-      <h3 className="text-xl font-bold text-foreground mb-3">{title}</h3>
-      <p className="text-foreground/60 leading-relaxed text-sm md:text-base">{description}</p>
+    </FadeIn>
+  );
+}
+
+export function FadeIn({ children, delay = 0, className = "", direction = "up" }: { children: React.ReactNode, delay?: number, className?: string, direction?: "up" | "left" | "right" | "none" }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsVisible(true);
+        observer.disconnect();
+      }
+    }, { threshold: 0.1 });
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  let translateClass = '';
+  switch (direction) {
+    case "up": translateClass = "translate-y-12"; break;
+    case "left": translateClass = "translate-x-12"; break;
+    case "right": translateClass = "-translate-x-12"; break;
+    case "none": translateClass = ""; break;
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 translate-y-0 translate-x-0' : `opacity-0 ${translateClass}`} ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
     </div>
   );
 }
