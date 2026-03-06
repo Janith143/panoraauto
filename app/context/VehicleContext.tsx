@@ -22,9 +22,16 @@ export interface Vehicle {
     plate: string;
     currentOdo: number;
     revenueLicenseDate?: string;
+    revenueLicensePhoto?: string;
     insuranceDate?: string;
+    insurancePhoto?: string;
     emissionReportDate?: string;
+    emissionReportPhoto?: string;
     photo?: string;
+    vin?: string;
+    engineType?: string | null;
+    shareToken?: string;
+    sharePreferences?: any;
 }
 
 export interface GarageCustomer {
@@ -71,7 +78,18 @@ interface VehicleContextType {
     bills: Bill[];
     garageCustomers: GarageCustomer[];
     updateOdometer: (vehicleId: string, newOdo: number) => Promise<void>;
-    updateVehicleDates: (vehicleId: string, revenueDate: string, insuranceDate: string, emissionReportDate: string) => Promise<void>;
+    updateVehicleDates: (
+        vehicleId: string,
+        revenueDate: string,
+        insuranceDate: string,
+        emissionReportDate: string,
+        documents?: {
+            revenueLicensePhoto?: string;
+            insurancePhoto?: string;
+            emissionReportPhoto?: string;
+        }
+    ) => Promise<void>;
+    updateVehicle: (vehicleId: string, updates: Partial<Vehicle>) => Promise<Vehicle>;
     updateVehiclePhoto: (vehicleId: string, photoDataUrl: string) => Promise<void>;
     addVehicle: (vehicle: Omit<Vehicle, 'id' | 'ownerId'>) => Promise<Vehicle>;
     deleteVehicle: (vehicleId: string) => Promise<void>;
@@ -186,9 +204,25 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
         });
     };
 
-    const updateVehicleDates = async (vehicleId: string, revenueDate: string, insuranceDate: string, emissionReportDate: string) => {
+    const updateVehicleDates = async (
+        vehicleId: string,
+        revenueDate: string,
+        insuranceDate: string,
+        emissionReportDate: string,
+        documents?: {
+            revenueLicensePhoto?: string;
+            insurancePhoto?: string;
+            emissionReportPhoto?: string;
+        }
+    ) => {
         const updatedVehicles = vehicles.map(v =>
-            v.id === vehicleId ? { ...v, revenueLicenseDate: revenueDate, insuranceDate, emissionReportDate } : v
+            v.id === vehicleId ? {
+                ...v,
+                revenueLicenseDate: revenueDate,
+                insuranceDate,
+                emissionReportDate,
+                ...(documents || {})
+            } : v
         );
         setVehicles(updatedVehicles);
 
@@ -199,8 +233,31 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
         await fetch(`/api/vehicles/${vehicleId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ revenueLicenseDate: finalRevDate, insuranceDate: finalInsDate, emissionReportDate: finalEmisDate })
+            body: JSON.stringify({
+                revenueLicenseDate: finalRevDate,
+                insuranceDate: finalInsDate,
+                emissionReportDate: finalEmisDate,
+                ...(documents || {})
+            })
         });
+    };
+
+    const updateVehicle = async (vehicleId: string, updates: Partial<Vehicle>): Promise<Vehicle> => {
+        const updatedVehicles = vehicles.map(v => v.id === vehicleId ? { ...v, ...updates } : v);
+        setVehicles(updatedVehicles);
+
+        const res = await fetch(`/api/vehicles/${vehicleId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || "Failed to update vehicle");
+        }
+
+        return updatedVehicles.find(v => v.id === vehicleId)!;
     };
 
     const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'ownerId'>): Promise<Vehicle> => {
@@ -346,7 +403,7 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
             source: "owner",
             date: insertedBill.date
         };
-        setBills([newBill, ...bills]);
+        setBills(prev => [newBill, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         await processRecordItems(newBill.vehicleId, newBill.items, newBill.odometer);
     };
 
@@ -448,7 +505,7 @@ export function VehicleProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <VehicleContext.Provider value={{ vehicles, parts, bills, garageCustomers, updateOdometer, updateVehicleDates, updateVehiclePhoto, addVehicle, deleteVehicle, transferVehicle, addGarageCustomer, updateGarageCustomer, sendBill, updateBill, addManualRecord, approveBill, updatePart, deletePart, loading }}>
+        <VehicleContext.Provider value={{ vehicles, parts, bills, garageCustomers, updateOdometer, updateVehicleDates, updateVehiclePhoto, addVehicle, updateVehicle, deleteVehicle, transferVehicle, addGarageCustomer, updateGarageCustomer, sendBill, updateBill, addManualRecord, approveBill, updatePart, deletePart, loading }}>
             {children}
         </VehicleContext.Provider>
     );

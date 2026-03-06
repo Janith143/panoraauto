@@ -4,15 +4,16 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { useVehicles, ServiceItem } from "@/app/context/VehicleContext";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, HealthBar, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/app/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, HealthBar, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, ShareVehicleModal } from "@/app/components/ui";
 import { Lightbox } from "@/app/components/ui/lightbox";
-import { Plus, Trash2, FileText, X, Loader2, Car, Clock } from "lucide-react";
+import { Plus, Trash2, FileText, X, Loader2, Car, Clock, Share2 } from "lucide-react";
 export default function OwnerDashboard() {
     const router = useRouter();
     const { user } = useAuth();
     const { vehicles, parts, bills, approveBill, addManualRecord, updateOdometer, addVehicle, loading: vehiclesLoading } = useVehicles();
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [newOdoValues, setNewOdoValues] = useState<Record<string, string>>({});
+    const [sharingVehicleId, setSharingVehicleId] = useState<string | null>(null);
 
     // Lightbox state
     const [lightboxImages, setLightboxImages] = useState<string[]>([]);
@@ -101,6 +102,14 @@ export default function OwnerDashboard() {
                 initialIndex={lightboxIndex}
                 onClose={() => setLightboxOpen(false)}
             />
+
+            {sharingVehicleId && (
+                <ShareVehicleModal
+                    isOpen={!!sharingVehicleId}
+                    onClose={() => setSharingVehicleId(null)}
+                    vehicleId={sharingVehicleId}
+                />
+            )}
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
@@ -487,13 +496,23 @@ export default function OwnerDashboard() {
                                     )}
                                 </div>
 
-                                <Button
-                                    className="w-full mt-4 bg-panel-border/30 hover:bg-panel-border/60 transition-colors"
-                                    variant="ghost"
-                                    onClick={() => router.push(`/owner/vehicle/${vehicle.id}`)}
-                                >
-                                    View Full Details & History
-                                </Button>
+                                <div className="flex gap-2 w-full mt-4">
+                                    <Button
+                                        className="flex-1 bg-panel-border/30 hover:bg-panel-border/60 transition-colors"
+                                        variant="ghost"
+                                        onClick={() => router.push(`/owner/vehicle/${vehicle.id}`)}
+                                    >
+                                        View Full Details
+                                    </Button>
+                                    <Button
+                                        className="border border-primary/20 text-primary hover:bg-primary/10 px-3"
+                                        variant="ghost"
+                                        onClick={() => setSharingVehicleId(vehicle.id)}
+                                        title="Share Profile"
+                                    >
+                                        <Share2 size={16} />
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
                     );

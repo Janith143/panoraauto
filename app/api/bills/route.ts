@@ -47,7 +47,7 @@ export async function POST(request: Request) {
                 notes: body.notes || null,
                 status: status,
                 source: body.source || user.role,
-                photos: body.photos || null,
+                photos: body.photos !== undefined ? body.photos : undefined,
 
                 // Nested create for items
                 items: {

@@ -4,15 +4,51 @@ import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { useVehicles, ServiceItem, Bill } from "@/app/context/VehicleContext";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, HealthBar, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/app/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, HealthBar, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, ShareVehicleModal, EditVehicleModal } from "@/app/components/ui";
 import { Lightbox } from "@/app/components/ui/lightbox";
-import { ArrowLeft, History, Wrench, AlertTriangle, CheckCircle, Plus, Trash2, Edit2, FileText, Save, X, Camera } from "lucide-react";
+import { ArrowLeft, History, Wrench, AlertTriangle, CheckCircle, Plus, Trash2, Edit2, FileText, Save, X, Camera, Share2, FileImage } from "lucide-react";
+
+const compressImage = (file: File, maxWidth = 1000, maxHeight = 1000, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = error => reject(error);
+        };
+        reader.onerror = error => reject(error);
+    });
+};
 
 export default function VehicleDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { user } = useAuth();
-    const { vehicles, parts, bills, updateOdometer, updateVehicleDates, addManualRecord, updateBill, updatePart, deletePart, deleteVehicle, transferVehicle, updateVehiclePhoto, loading } = useVehicles();
+    const { vehicles, parts, bills, updateOdometer, updateVehicleDates, addManualRecord, updateBill, updatePart, deletePart, deleteVehicle, transferVehicle, updateVehiclePhoto, updateVehicle, loading } = useVehicles();
 
     const [updatingOdo, setUpdatingOdo] = useState(false);
     const [isDeletingVehicle, setIsDeletingVehicle] = useState(false);
@@ -32,6 +68,13 @@ export default function VehicleDetailPage() {
     const [revDate, setRevDate] = useState("");
     const [insDate, setInsDate] = useState("");
     const [emiDate, setEmiDate] = useState("");
+    const [revPhoto, setRevPhoto] = useState<string | null>(null);
+    const [insPhoto, setInsPhoto] = useState<string | null>(null);
+    const [emiPhoto, setEmiPhoto] = useState<string | null>(null);
+    const [editingVin, setEditingVin] = useState(false);
+    const [vinValue, setVinValue] = useState("");
+    const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
+    const [isEditingDetails, setIsEditingDetails] = useState(false);
 
     // Manual Log state
     const [isLogging, setIsLogging] = useState(false);
@@ -136,7 +179,30 @@ export default function VehicleDetailPage() {
 
     const handleUpdateDates = async () => {
         try {
-            await updateVehicleDates(vehicle.id, revDate, insDate, emiDate);
+            await updateVehicleDates(vehicle.id, revDate, insDate, emiDate, {
+                revenueLicensePhoto: revPhoto || undefined,
+                insurancePhoto: insPhoto || undefined,
+                emissionReportPhoto: emiPhoto || undefined
+            });
+
+            // Log document photos to maintenance history
+            const uploadLogs: any[] = [];
+            if (revPhoto && (vehicle as any).revenueLicensePhoto !== revPhoto) uploadLogs.push({ name: "Revenue License Uploaded", photo: revPhoto });
+            if (insPhoto && (vehicle as any).insurancePhoto !== insPhoto) uploadLogs.push({ name: "Insurance Document Uploaded", photo: insPhoto });
+            if (emiPhoto && (vehicle as any).emissionReportPhoto !== emiPhoto) uploadLogs.push({ name: "Emission Report Uploaded", photo: emiPhoto });
+
+            for (const log of uploadLogs) {
+                await addManualRecord({
+                    vehicleId: vehicle.id,
+                    plate: vehicle.plate,
+                    amount: 0,
+                    odometer: vehicle.currentOdo,
+                    items: [{ name: log.name, price: 0 }],
+                    notes: `System Log: Document ${log.name} Attached`,
+                    photos: [log.photo]
+                });
+            }
+
             setEditingDates(false);
         } catch (err: any) {
             console.error("Caught Exception updating dates:", err);
@@ -144,17 +210,34 @@ export default function VehicleDetailPage() {
         }
     };
 
+    const handleUpdateVin = async () => {
+        try {
+            await updateVehicle(vehicle.id, { vin: vinValue });
+            setEditingVin(false);
+        } catch (err: any) {
+            alert(`Failed to update VIN: ${err.message}`);
+        }
+    };
+
+    const handleDocPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string | null>>) => {
+        if (e.target.files && e.target.files[0]) {
+            try {
+                const compressed = await compressImage(e.target.files[0]);
+                setter(compressed);
+            } catch (err) {
+                console.error("Failed to compress document photo:", err);
+            }
+        }
+    };
+
     const handleVehiclePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                try {
-                    await updateVehiclePhoto(vehicle.id, reader.result as string);
-                } catch (err: any) {
-                    alert(`Failed to update photo: ${err.message}`);
-                }
-            };
-            reader.readAsDataURL(e.target.files[0]);
+            try {
+                const compressed = await compressImage(e.target.files[0], 1200, 1200, 0.8);
+                await updateVehiclePhoto(vehicle.id, compressed);
+            } catch (err: any) {
+                alert(`Failed to update photo: ${err.message}`);
+            }
         }
     };
 
@@ -189,19 +272,16 @@ export default function VehicleDetailPage() {
         setLogItems(newItems);
     };
 
-    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const newPhotos: string[] = [];
-            Array.from(e.target.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    newPhotos.push(reader.result as string);
-                    if (newPhotos.length === e.target.files?.length) {
-                        setLogPhotos(prev => [...prev, ...newPhotos]);
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+            try {
+                const compressedPhotos = await Promise.all(
+                    Array.from(e.target.files).map(f => compressImage(f))
+                );
+                setLogPhotos(prev => [...prev, ...compressedPhotos]);
+            } catch (err) {
+                console.error("Image compression failed", err);
+            }
         }
     };
 
@@ -320,6 +400,17 @@ export default function VehicleDetailPage() {
                 initialIndex={lightboxIndex}
                 onClose={() => setLightboxOpen(false)}
             />
+            <EditVehicleModal
+                isOpen={isEditingDetails}
+                onClose={() => setIsEditingDetails(false)}
+                vehicleId={vehicle.id}
+            />
+
+            <ShareVehicleModal
+                isOpen={isSharingModalOpen}
+                onClose={() => setIsSharingModalOpen(false)}
+                vehicleId={vehicle.id}
+            />
 
             {/* Header & Navigation */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
@@ -354,6 +445,24 @@ export default function VehicleDetailPage() {
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-foreground/50">
                             <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-primary/70"></span> {vehicle.year}</span>
                             <span className="flex items-center gap-2 font-mono uppercase tracking-widest"><span className="w-2 h-2 rounded-full bg-foreground/30"></span> {vehicle.plate}</span>
+                            <Button variant="ghost" size="sm" className="h-6 text-xs text-foreground/50 hover:text-foreground" onClick={() => setIsEditingDetails(true)}>
+                                <Edit2 size={12} className="mr-1" /> Edit Details
+                            </Button>
+
+                            {editingVin ? (
+                                <span className="flex items-center gap-2 border border-panel-border rounded px-2 py-0.5 bg-background">
+                                    <span className="w-2 h-2 rounded-full bg-warning/70"></span>
+                                    <Input value={vinValue} onChange={(e: any) => setVinValue(e.target.value)} className="h-6 w-32 px-1 py-0 text-sm font-mono border-0 bg-transparent ring-0 focus-visible:ring-0" placeholder="VIN..." autoFocus />
+                                    <Button variant="ghost" size="sm" className="h-5 px-1 hover:text-success" onClick={handleUpdateVin}><CheckCircle size={12} /></Button>
+                                    <Button variant="ghost" size="sm" className="h-5 px-1 hover:text-alert" onClick={() => setEditingVin(false)}><X size={12} /></Button>
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-2 font-mono uppercase tracking-widest group">
+                                    <span className="w-2 h-2 rounded-full bg-warning/70"></span>
+                                    {(vehicle as any).vin || "NO VIN SET"}
+                                    <Edit2 size={10} className="opacity-0 group-hover:opacity-100 cursor-pointer hover:text-primary transition-opacity" onClick={() => { setVinValue((vehicle as any).vin || ""); setEditingVin(true); }} />
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -386,6 +495,9 @@ export default function VehicleDetailPage() {
                             </Button>
                         </>
                     )}
+                    <Button variant="primary" className="flex-1 md:flex-none" onClick={() => setIsSharingModalOpen(true)}>
+                        <Share2 size={16} className="mr-2" /> Share Profile
+                    </Button>
                     <Button variant="ghost" className="border border-primary text-primary hover:bg-primary/20 flex-1 md:flex-none" onClick={() => setIsLogging(!isLogging)}>
                         Maintenance Log
                     </Button>
@@ -793,26 +905,47 @@ export default function VehicleDetailPage() {
                                 <FileText size={16} /> Legal & Docs
                             </CardTitle>
                             {!editingDates && <Button variant="ghost" size="icon" onClick={() => {
-                                setRevDate(vehicle.revenueLicenseDate || "");
-                                setInsDate(vehicle.insuranceDate || "");
-                                setEmiDate(vehicle.emissionReportDate || "");
+                                setRevDate(vehicle.revenueLicenseDate ? String(vehicle.revenueLicenseDate).split('T')[0] : "");
+                                setInsDate(vehicle.insuranceDate ? String(vehicle.insuranceDate).split('T')[0] : "");
+                                setEmiDate(vehicle.emissionReportDate ? String(vehicle.emissionReportDate).split('T')[0] : "");
+                                setRevPhoto((vehicle as any).revenueLicensePhoto || null);
+                                setInsPhoto((vehicle as any).insurancePhoto || null);
+                                setEmiPhoto((vehicle as any).emissionReportPhoto || null);
                                 setEditingDates(true);
                             }}><Edit2 size={14} /></Button>}
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {editingDates ? (
                                 <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                                    <div>
-                                        <label className="block text-xs text-foreground/50 mb-1">Revenue License Date</label>
-                                        <Input type="date" value={revDate} onChange={(e: any) => setRevDate(e.target.value)} />
+                                    <div className="flex gap-2 items-center">
+                                        <div className="flex-1">
+                                            <label className="block text-xs text-foreground/50 mb-1">Revenue License Date</label>
+                                            <Input type="date" value={revDate} onChange={(e: any) => setRevDate(e.target.value)} />
+                                        </div>
+                                        <div className="w-12 h-10 border border-panel-border rounded mt-5 flex items-center justify-center relative overflow-hidden group hover:border-primary transition-colors" title="Upload Photo Document (Optional)">
+                                            {revPhoto ? <img src={revPhoto} className="w-full h-full object-cover" /> : <Camera size={16} className="text-foreground/30 group-hover:text-primary transition-colors" />}
+                                            <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleDocPhotoUpload(e, setRevPhoto)} />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs text-foreground/50 mb-1">Insurance Renewal Date</label>
-                                        <Input type="date" value={insDate} onChange={(e: any) => setInsDate(e.target.value)} />
+                                    <div className="flex gap-2 items-center">
+                                        <div className="flex-1">
+                                            <label className="block text-xs text-foreground/50 mb-1">Insurance Renewal Date</label>
+                                            <Input type="date" value={insDate} onChange={(e: any) => setInsDate(e.target.value)} />
+                                        </div>
+                                        <div className="w-12 h-10 border border-panel-border rounded mt-5 flex items-center justify-center relative overflow-hidden group hover:border-primary transition-colors" title="Upload Photo Document (Optional)">
+                                            {insPhoto ? <img src={insPhoto} className="w-full h-full object-cover" /> : <Camera size={16} className="text-foreground/30 group-hover:text-primary transition-colors" />}
+                                            <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleDocPhotoUpload(e, setInsPhoto)} />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs text-foreground/50 mb-1">Emission Report Date</label>
-                                        <Input type="date" value={emiDate} onChange={(e: any) => setEmiDate(e.target.value)} />
+                                    <div className="flex gap-2 items-center">
+                                        <div className="flex-1">
+                                            <label className="block text-xs text-foreground/50 mb-1">Emission Report Date</label>
+                                            <Input type="date" value={emiDate} onChange={(e: any) => setEmiDate(e.target.value)} />
+                                        </div>
+                                        <div className="w-12 h-10 border border-panel-border rounded mt-5 flex items-center justify-center relative overflow-hidden group hover:border-primary transition-colors" title="Upload Photo Document (Optional)">
+                                            {emiPhoto ? <img src={emiPhoto} className="w-full h-full object-cover" /> : <Camera size={16} className="text-foreground/30 group-hover:text-primary transition-colors" />}
+                                            <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleDocPhotoUpload(e, setEmiPhoto)} />
+                                        </div>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button variant="primary" className="flex-1 text-sm h-8 py-0" onClick={handleUpdateDates}>Save</Button>
@@ -821,21 +954,24 @@ export default function VehicleDetailPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <div className="flex justify-between items-center border-b border-panel-border pb-3">
+                                    <div className="flex justify-between items-center border-b border-panel-border pb-3 hover:bg-panel/30 -mx-2 px-2 rounded transition-colors group">
                                         <span className="text-sm text-foreground/70">Rev. License</span>
-                                        <span className={!vehicle.revenueLicenseDate ? "text-warning text-sm font-bold" : "text-sm text-foreground font-mono"}>
+                                        <span className={!vehicle.revenueLicenseDate ? "text-warning text-sm font-bold flex items-center gap-2" : "text-sm text-foreground font-mono flex items-center gap-2"}>
+                                            {(vehicle as any).revenueLicensePhoto && <FileImage size={14} className="text-primary cursor-pointer hover:text-primary/70" onClick={() => openLightbox([(vehicle as any).revenueLicensePhoto])} />}
                                             {vehicle.revenueLicenseDate ? new Date(vehicle.revenueLicenseDate).toLocaleDateString() : "Not Set"}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center pb-3">
+                                    <div className="flex justify-between items-center pb-3 hover:bg-panel/30 -mx-2 px-2 rounded transition-colors group">
                                         <span className="text-sm text-foreground/70">Insurance</span>
-                                        <span className={!vehicle.insuranceDate ? "text-warning text-sm font-bold" : "text-sm text-foreground font-mono"}>
+                                        <span className={!vehicle.insuranceDate ? "text-warning text-sm font-bold flex items-center gap-2" : "text-sm text-foreground font-mono flex items-center gap-2"}>
+                                            {(vehicle as any).insurancePhoto && <FileImage size={14} className="text-primary cursor-pointer hover:text-primary/70" onClick={() => openLightbox([(vehicle as any).insurancePhoto])} />}
                                             {vehicle.insuranceDate ? new Date(vehicle.insuranceDate).toLocaleDateString() : "Not Set"}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center border-t border-panel-border pt-3">
+                                    <div className="flex justify-between items-center border-t border-panel-border pt-3 hover:bg-panel/30 -mx-2 px-2 rounded transition-colors group">
                                         <span className="text-sm text-foreground/70">Emission Report</span>
-                                        <span className={!vehicle.emissionReportDate ? "text-warning text-sm font-bold" : "text-sm text-foreground font-mono"}>
+                                        <span className={!vehicle.emissionReportDate ? "text-warning text-sm font-bold flex items-center gap-2" : "text-sm text-foreground font-mono flex items-center gap-2"}>
+                                            {(vehicle as any).emissionReportPhoto && <FileImage size={14} className="text-primary cursor-pointer hover:text-primary/70" onClick={() => openLightbox([(vehicle as any).emissionReportPhoto])} />}
                                             {vehicle.emissionReportDate ? new Date(vehicle.emissionReportDate).toLocaleDateString() : "Not Set"}
                                         </span>
                                     </div>
@@ -856,6 +992,7 @@ export default function VehicleDetailPage() {
                             <div className="relative border-l-2 border-panel-border ml-4 space-y-10 pb-8">
                                 {paginatedBills.map((bill, index) => {
                                     const isOdoChange = bill.amount === 0 && (!bill.items || bill.items.length === 0);
+                                    const isDocumentUpload = bill.notes?.includes("System Log:");
 
                                     // Odometer calculation
                                     const globalIndex = (historyPage - 1) * PAGE_SIZE + index;
@@ -964,7 +1101,7 @@ export default function VehicleDetailPage() {
                                                     <div className="flex justify-between items-start mb-4 pr-8">
                                                         <div>
                                                             <h4 className="font-bold text-lg text-foreground">
-                                                                {isOdoChange ? 'Odometer Adjustment' : (bill.source === 'garage' ? 'Garage Service' : 'DIY Maintenance')}
+                                                                {isOdoChange ? 'Odometer Adjustment' : (isDocumentUpload ? 'Document Upload' : (bill.source === 'garage' ? 'Garage Service' : 'DIY Maintenance'))}
                                                             </h4>
                                                             <div className="flex items-center gap-3 mt-1">
                                                                 <p className="text-sm text-foreground/50">

@@ -36,9 +36,14 @@ model Vehicle {
   engineType         String?   @map("engine_type")
   currentOdo         Int       @default(0) @map("current_odo")
   revenueLicenseDate DateTime? @db.Date @map("revenue_license_date")
+  revenueLicensePhoto String?  @db.LongText @map("revenue_license_photo")
   insuranceDate      DateTime? @db.Date @map("insurance_date")
+  insurancePhoto     String?   @db.LongText @map("insurance_photo")
   emissionReportDate DateTime? @db.Date @map("emission_report_date")
+  emissionReportPhoto String?  @db.LongText @map("emission_report_photo")
   photo              String?   @db.LongText
+  shareToken         String?   @unique @map("share_token")
+  sharePreferences   Json?     @map("share_preferences")
   createdAt          DateTime  @default(now()) @map("created_at")
 
   owner              Owner         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
