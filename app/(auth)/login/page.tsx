@@ -163,6 +163,14 @@ export default function LoginPage() {
                         </Button>
                     </form>
 
+                    {isLogin && (
+                        <div className="mt-3 text-center">
+                            <Link href="/forgot-password" className="text-sm text-foreground/50 hover:text-primary transition-colors">
+                                Forgot your password?
+                            </Link>
+                        </div>
+                    )}
+
                     <div className="mt-6 text-center text-sm">
                         <span className="text-foreground/70">
                             {isLogin ? "Don't have an account?" : "Already have an account?"}
